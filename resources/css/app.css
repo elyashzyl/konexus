@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body,
+html {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+    :root {
+        /* KONEXUS brand palette (warm neutrals + terracotta accent) */
+        --background: 40 35% 98%;
+        --foreground: 28 30% 14%;
+        --card: 0 0% 100%;
+        --card-foreground: 28 30% 14%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 28 30% 14%;
+        --primary: 26 57% 40%;
+        --primary-foreground: 40 40% 98%;
+        --secondary: 40 30% 94%;
+        --secondary-foreground: 26 35% 22%;
+        --muted: 40 25% 94%;
+        --muted-foreground: 28 15% 42%;
+        --accent: 30 55% 92%;
+        --accent-foreground: 26 40% 28%;
+        --destructive: 0 72% 60%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 35 22% 88%;
+        --input: 35 20% 84%;
+        --ring: 26 57% 40%;
+        --chart-1: 26 57% 40%;
+        --chart-2: 120 83% 45%;
+        --chart-3: 38 96% 50%;
+        --chart-4: 30 46% 64%;
+        --chart-5: 208 80% 48%;
+        --radius: 1rem;
+        --sidebar-background: 40 30% 97%;
+        --sidebar-foreground: 28 25% 30%;
+        --sidebar-primary: 26 57% 40%;
+        --sidebar-primary-foreground: 40 40% 98%;
+        --sidebar-accent: 35 30% 92%;
+        --sidebar-accent-foreground: 26 40% 28%;
+        --sidebar-border: 35 22% 88%;
+        --sidebar-ring: 26 57% 40%;
+    }
+
+    .dark {
+        --background: 28 20% 8%;
+        --foreground: 40 25% 94%;
+        --card: 28 18% 10%;
+        --card-foreground: 40 25% 94%;
+        --popover: 28 18% 10%;
+        --popover-foreground: 40 25% 94%;
+        --primary: 30 50% 62%;
+        --primary-foreground: 28 35% 12%;
+        --secondary: 28 15% 16%;
+        --secondary-foreground: 40 25% 92%;
+        --muted: 28 15% 14%;
+        --muted-foreground: 30 12% 62%;
+        --accent: 30 20% 20%;
+        --accent-foreground: 40 30% 90%;
+        --destructive: 0 70% 58%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 28 15% 18%;
+        --input: 28 15% 20%;
+        --ring: 30 50% 62%;
+        --chart-1: 30 50% 62%;
+        --chart-2: 120 70% 55%;
+        --chart-3: 40 90% 60%;
+        --chart-4: 30 40% 50%;
+        --chart-5: 208 70% 60%;
+        --sidebar-background: 28 20% 9%;
+        --sidebar-foreground: 40 25% 90%;
+        --sidebar-primary: 30 50% 62%;
+        --sidebar-primary-foreground: 28 35% 12%;
+        --sidebar-accent: 28 15% 16%;
+        --sidebar-accent-foreground: 40 30% 90%;
+        --sidebar-border: 28 15% 16%;
+        --sidebar-ring: 30 50% 62%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}

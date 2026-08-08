@@ -1,0 +1,152 @@
+import { APP_NAME, APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
+import AppLayout from '@/layouts/AppLayout.vue';
+import AuthLayout from '@/layouts/AuthLayout.vue';
+import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { moduleRoutes } from '@/modules';
+import { useAuthStore } from '@/stores/auth';
+import type { RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
+
+const routes: RouteRecordRaw[] = [
+    {
+        path: '/',
+        component: AppLayout,
+        meta: { requiresAuth: true },
+        children: [
+            {
+                path: '',
+                name: APP_ROUTES.dashboard.name,
+                component: () => import('@/pages/Dashboard.vue'),
+                meta: {
+                    title: 'Dashboard',
+                    breadcrumbs: [{ title: 'Dashboard', href: APP_ROUTES.dashboard.path }],
+                },
+            },
+            {
+                path: 'settings',
+                component: SettingsLayout,
+                meta: { requiresAuth: true },
+                children: [
+                    {
+                        path: 'profile',
+                        name: APP_ROUTES.settings.profile.name,
+                        component: () => import('@/pages/settings/Profile.vue'),
+                        meta: { title: 'Profile' },
+                    },
+                    {
+                        path: 'password',
+                        name: APP_ROUTES.settings.password.name,
+                        component: () => import('@/pages/settings/Password.vue'),
+                        meta: { title: 'Password' },
+                    },
+                    {
+                        path: 'appearance',
+                        name: APP_ROUTES.settings.appearance.name,
+                        component: () => import('@/pages/settings/Appearance.vue'),
+                        meta: { title: 'Appearance' },
+                    },
+                ],
+            },
+            ...moduleRoutes,
+        ],
+    },
+    {
+        path: '/auth',
+        component: AuthLayout,
+        meta: { requiresGuest: true },
+        children: [
+            {
+                path: 'login',
+                name: AUTH_ROUTES.login.name,
+                component: () => import('@/pages/auth/Login.vue'),
+                meta: { title: 'Log in' },
+            },
+            {
+                path: 'register',
+                name: AUTH_ROUTES.register.name,
+                component: () => import('@/pages/auth/Register.vue'),
+                meta: { title: 'Create an account' },
+            },
+            {
+                path: 'forgot-password',
+                name: AUTH_ROUTES['forgot-password'].name,
+                component: () => import('@/pages/auth/ForgotPassword.vue'),
+                meta: { title: 'Forgot password' },
+            },
+            {
+                path: 'reset-password',
+                name: AUTH_ROUTES['reset-password'].name,
+                component: () => import('@/pages/auth/ResetPassword.vue'),
+                meta: { title: 'Reset password' },
+            },
+        ],
+    },
+    {
+        path: '/403',
+        name: APP_ROUTES.errors[403].name,
+        component: () => import('@/pages/errors/ErrorPage.vue'),
+        props: {
+            status: 403,
+            title: 'Forbidden',
+            description: 'You do not have permission to access this resource. Contact your administrator if you believe this is a mistake.',
+        },
+    },
+    {
+        path: '/404',
+        name: APP_ROUTES.errors[404].name,
+        component: () => import('@/pages/errors/ErrorPage.vue'),
+        props: {
+            status: 404,
+            title: 'Page not found',
+            description: 'The page you are looking for does not exist or has been moved.',
+        },
+    },
+    {
+        path: '/500',
+        name: APP_ROUTES.errors[500].name,
+        component: () => import('@/pages/errors/ErrorPage.vue'),
+        props: {
+            status: 500,
+            title: 'Something went wrong',
+            description: 'An unexpected error occurred on our servers. Please try again later.',
+        },
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: APP_ROUTES.errors[404].path,
+    },
+];
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes,
+});
+
+router.beforeEach(async (to) => {
+    const auth = useAuthStore();
+
+    if (!auth.initialized) {
+        await auth.initialize();
+    }
+
+    if (to.meta.requiresAuth && !auth.isAuthenticated) {
+        return {
+            name: AUTH_ROUTES.login.name,
+            query: to.fullPath !== APP_ROUTES.dashboard.path ? { redirect: to.fullPath } : {},
+        };
+    }
+
+    if (to.meta.requiresGuest && auth.isAuthenticated) {
+        return { name: APP_ROUTES.dashboard.name };
+    }
+
+    return true;
+});
+
+router.afterEach((to) => {
+    const title = to.meta.title;
+
+    document.title = title ? `${title} - ${APP_NAME}` : APP_NAME;
+});
+
+export default router;
