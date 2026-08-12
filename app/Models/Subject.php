@@ -6,6 +6,7 @@ use Database\Factories\SubjectFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -59,6 +60,16 @@ class Subject extends Model
     public function gradeLevel(): BelongsTo
     {
         return $this->belongsTo(GradeLevel::class);
+    }
+
+    /**
+     * The offerings of this subject across sections and academic years.
+     *
+     * @return HasMany<SubjectOffering, $this>
+     */
+    public function offerings(): HasMany
+    {
+        return $this->hasMany(SubjectOffering::class);
     }
 
     /**

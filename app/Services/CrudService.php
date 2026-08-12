@@ -26,6 +26,13 @@ abstract class CrudService
     protected array $searchable = [];
 
     /**
+     * Relation columns included in free-text search (relation => columns).
+     *
+     * @var array<string, list<string>>
+     */
+    protected array $searchableRelations = [];
+
+    /**
      * Columns that are allowed to be sorted on.
      *
      * @var list<string>
@@ -81,6 +88,14 @@ abstract class CrudService
                 foreach ($this->searchable as $column) {
                     $query->orWhere($column, 'like', "%{$search}%");
                 }
+
+                foreach ($this->searchableRelations as $relation => $columns) {
+                    $query->orWhereHas($relation, function (Builder $query) use ($columns, $search): void {
+                        foreach ($columns as $column) {
+                            $query->orWhere($column, 'like', "%{$search}%");
+                        }
+                    });
+                }
             });
         }
 
@@ -111,6 +126,56 @@ abstract class CrudService
         }
 
         return $query->orderBy($this->defaultSortBy, 'asc')->get();
+    }
+
+    /**
+     * Return all matching records applying the same search/filter/sort rules
+     * as index but without pagination (used for CSV export).
+     *
+     * @return Collection<int, TModel>
+     */
+    public function export(IndexRequest $request): Collection
+    {
+        /** @var Builder<TModel> $query */
+        $query = $this->repository()->query();
+
+        if ($this->with !== []) {
+            $query->with($this->with);
+        }
+
+        if ($request->trashed()) {
+            $query->onlyTrashed();
+        }
+
+        foreach ($this->filters($request) as $key => $value) {
+            if ($value === null || $value === '' || $value === 'all') {
+                continue;
+            }
+
+            $query->where($key, $this->normalizeFilterValue($value));
+        }
+
+        if ($search = $request->search()) {
+            $query->where(function (Builder $query) use ($search): void {
+                foreach ($this->searchable as $column) {
+                    $query->orWhere($column, 'like', "%{$search}%");
+                }
+
+                foreach ($this->searchableRelations as $relation => $columns) {
+                    $query->orWhereHas($relation, function (Builder $query) use ($columns, $search): void {
+                        foreach ($columns as $column) {
+                            $query->orWhere($column, 'like', "%{$search}%");
+                        }
+                    });
+                }
+            });
+        }
+
+        $sortBy = $request->sortBy();
+        $sortBy = $sortBy !== null && in_array($sortBy, $this->sortable, true) ? $sortBy : $this->defaultSortBy;
+        $query->orderBy($sortBy, $request->sortDir() === 'desc' ? 'desc' : 'asc');
+
+        return $query->get();
     }
 
     /**

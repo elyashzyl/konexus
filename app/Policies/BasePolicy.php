@@ -86,4 +86,12 @@ abstract class BasePolicy
 
         return $user->can($permission);
     }
+
+    /**
+     * Alias used by extended policies for any named granular permission.
+     */
+    protected function hasPermission(User $user, string $permission, bool $restricted = false): bool
+    {
+        return $this->authorize($user, $permission, $restricted);
+    }
 }

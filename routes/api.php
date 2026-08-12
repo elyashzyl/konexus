@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AcademicDashboardController;
+use App\Http\Controllers\Api\V1\AcademicClassController;
+use App\Http\Controllers\Api\V1\AcademicSettingController;
 use App\Http\Controllers\Api\V1\AcademicTermController;
 use App\Http\Controllers\Api\V1\AcademicYearController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
@@ -8,16 +11,32 @@ use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\BuildingController;
 use App\Http\Controllers\Api\V1\CampusController;
+use App\Http\Controllers\Api\V1\ClassScheduleController;
+use App\Http\Controllers\Api\V1\CurriculumEntryController;
 use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\EnrollmentController;
+use App\Http\Controllers\Api\V1\EnrollmentDocumentController;
+use App\Http\Controllers\Api\V1\EnrollmentRequirementController;
+use App\Http\Controllers\Api\V1\GradeCorrectionController;
+use App\Http\Controllers\Api\V1\GradeRecordController;
+use App\Http\Controllers\Api\V1\GradeScaleController;
 use App\Http\Controllers\Api\V1\GradeLevelController;
+use App\Http\Controllers\Api\V1\GuardianController;
 use App\Http\Controllers\Api\V1\MasterDataController;
+use App\Http\Controllers\Api\V1\ParentController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\SchoolCalendarEventController;
 use App\Http\Controllers\Api\V1\SchoolProfileController;
 use App\Http\Controllers\Api\V1\SectionController;
+use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
+use App\Http\Controllers\Api\V1\SubjectOfferingController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
+use App\Http\Controllers\Api\V1\TeacherAssignmentController;
+use App\Http\Controllers\Api\V1\TeacherController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -36,7 +55,25 @@ $crudRoutes = static function (string $prefix, string $name, string $controller)
     });
 };
 
-Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes): void {
+/**
+ * People Management routes: standard CRUD + CSV export/import + per-resource options.
+ */
+$peopleRoutes = static function (string $prefix, string $name, string $controller): void {
+    Route::prefix($prefix)->name($name.'.')->group(static function () use ($controller): void {
+        Route::get('export', [$controller, 'export'])->name('export');
+        Route::post('import', [$controller, 'import'])->name('import');
+        Route::get('/', [$controller, 'index'])->name('index');
+        Route::post('/', [$controller, 'store'])->name('store');
+        Route::get('/{id}', [$controller, 'show'])->name('show');
+        Route::put('/{id}', [$controller, 'update'])->name('update');
+        Route::patch('/{id}', [$controller, 'update'])->name('partial-update');
+        Route::delete('/{id}', [$controller, 'destroy'])->name('destroy');
+        Route::post('/{id}/restore', [$controller, 'restore'])->name('restore');
+        Route::delete('/{id}/force', [$controller, 'forceDestroy'])->name('force-destroy');
+    });
+};
+
+Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopleRoutes): void {
     // ─────────────────────────────────────────────
     // Public authentication endpoints
     // ─────────────────────────────────────────────
@@ -82,7 +119,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes): void 
     // ─────────────────────────────────────────
     // Phase 2 core modules
     // ─────────────────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () use ($crudRoutes): void {
+    Route::middleware('auth:sanctum')->group(function () use ($crudRoutes, $peopleRoutes): void {
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
 
         $crudRoutes('system-settings', 'system-settings', SystemSettingController::class);
@@ -99,5 +136,180 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes): void 
         $crudRoutes('school-calendar', 'school-calendar', SchoolCalendarEventController::class);
         $crudRoutes('announcements', 'announcements', AnnouncementController::class);
         $crudRoutes('master-data', 'master-data', MasterDataController::class);
+
+        // ─────────────────────────────────────────
+        // Part 3 – People Management
+        // ─────────────────────────────────────────
+        $peopleRoutes('students', 'students', StudentController::class);
+        $peopleRoutes('parents', 'parents', ParentController::class);
+        $peopleRoutes('guardians', 'guardians', GuardianController::class);
+        $peopleRoutes('employees', 'employees', EmployeeController::class);
+        $peopleRoutes('teachers', 'teachers', TeacherController::class);
+        $peopleRoutes('staff', 'staff', StaffController::class);
+
+        Route::prefix('students')->name('students.')->group(function (): void {
+            Route::get('/{id}/activities', [StudentController::class, 'activities'])->name('activities');
+            Route::post('/{id}/photo', [StudentController::class, 'storePhoto'])->name('photo');
+            Route::post('/{id}/parents/{parentId}', [StudentController::class, 'linkParent'])->name('link-parent');
+            Route::delete('/{id}/parents/{parentId}', [StudentController::class, 'unlinkParent'])->name('unlink-parent');
+            Route::post('/{id}/guardians/{guardianId}', [StudentController::class, 'linkGuardian'])->name('link-guardian');
+            Route::delete('/{id}/guardians/{guardianId}', [StudentController::class, 'unlinkGuardian'])->name('unlink-guardian');
+        });
+
+        // ─────────────────────────────────────────
+        // Part 4 – Enrollment Management
+        // ─────────────────────────────────────────
+        Route::prefix('enrollments')->name('enrollments.')->group(function (): void {
+            Route::get('export', [EnrollmentController::class, 'export'])->name('export');
+            Route::post('import', [EnrollmentController::class, 'import'])->name('import');
+            Route::post('search-student', [EnrollmentController::class, 'searchStudent'])->name('search-student');
+            Route::get('statistics', [EnrollmentController::class, 'statistics'])->name('statistics');
+            Route::get('config', [EnrollmentController::class, 'config'])->name('config');
+
+            Route::get('/', [EnrollmentController::class, 'index'])->name('index');
+            Route::post('/', [EnrollmentController::class, 'store'])->name('store');
+            Route::get('/{id}', [EnrollmentController::class, 'show'])->name('show');
+            Route::put('/{id}', [EnrollmentController::class, 'update'])->name('update');
+            Route::patch('/{id}', [EnrollmentController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [EnrollmentController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [EnrollmentController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [EnrollmentController::class, 'forceDestroy'])->name('force-destroy');
+
+            Route::post('/{id}/submit', [EnrollmentController::class, 'submit'])->name('submit');
+            Route::post('/{id}/verify', [EnrollmentController::class, 'verify'])->name('verify');
+            Route::post('/{id}/approve', [EnrollmentController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [EnrollmentController::class, 'reject'])->name('reject');
+            Route::post('/{id}/complete', [EnrollmentController::class, 'complete'])->name('complete');
+            Route::post('/{id}/uncomplete', [EnrollmentController::class, 'uncomplete'])->name('uncomplete');
+            Route::post('/{id}/withdraw', [EnrollmentController::class, 'withdraw'])->name('withdraw');
+            Route::post('/{id}/cancel', [EnrollmentController::class, 'cancel'])->name('cancel');
+            Route::post('/{id}/transfer', [EnrollmentController::class, 'transfer'])->name('transfer');
+            Route::post('/{id}/override-capacity', [EnrollmentController::class, 'overrideCapacity'])->name('override-capacity');
+
+            Route::get('/{id}/requirements', [EnrollmentController::class, 'requirements'])->name('requirements');
+            Route::post('/{id}/requirements/sync', [EnrollmentController::class, 'syncRequirements'])->name('requirements-sync');
+            Route::patch('/{id}/requirements/{itemId}', [EnrollmentController::class, 'updateRequirementItem'])->name('requirements-update');
+
+            Route::get('/{id}/history', [EnrollmentController::class, 'history'])->name('history');
+            Route::get('/{id}/transfers', [EnrollmentController::class, 'transfers'])->name('transfers');
+            Route::get('/{id}/signatures', [EnrollmentController::class, 'signatures'])->name('signatures');
+            Route::post('/{id}/signatures', [EnrollmentController::class, 'storeSignature'])->name('signatures.store');
+            Route::get('/{id}/print', [EnrollmentController::class, 'print'])->name('print');
+
+            Route::get('/{id}/documents', [EnrollmentDocumentController::class, 'index'])->name('documents');
+            Route::post('/{id}/documents', [EnrollmentDocumentController::class, 'store'])->name('documents.store');
+            Route::get('/{id}/documents/{documentId}/download', [EnrollmentDocumentController::class, 'download'])->name('documents.download');
+            Route::get('/{id}/documents/{documentId}/preview', [EnrollmentDocumentController::class, 'preview'])->name('documents.preview');
+            Route::delete('/{id}/documents/{documentId}', [EnrollmentDocumentController::class, 'destroy'])->name('documents.destroy');
+        });
+
+        $crudRoutes('enrollment-requirements', 'enrollment-requirements', EnrollmentRequirementController::class);
+
+        // ─────────────────────────────────────────
+        // Part 6 – Academic Management
+        // ─────────────────────────────────────────
+        $crudRoutes('curriculum', 'curriculum', CurriculumEntryController::class);
+        $crudRoutes('subject-offerings', 'subject-offerings', SubjectOfferingController::class);
+
+        Route::prefix('teacher-assignments')->name('teacher-assignments.')->group(function () use ($crudRoutes): void {
+            Route::get('load', [TeacherAssignmentController::class, 'load'])->name('load');
+            Route::get('/', [TeacherAssignmentController::class, 'index'])->name('index');
+            Route::post('/', [TeacherAssignmentController::class, 'store'])->name('store');
+            Route::get('/{id}', [TeacherAssignmentController::class, 'show'])->name('show');
+            Route::put('/{id}', [TeacherAssignmentController::class, 'update'])->name('update');
+            Route::patch('/{id}', [TeacherAssignmentController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [TeacherAssignmentController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [TeacherAssignmentController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [TeacherAssignmentController::class, 'forceDestroy'])->name('force-destroy');
+        });
+
+        Route::get('academic-settings/grouped', [AcademicSettingController::class, 'grouped'])->name('academic-settings.grouped');
+        $crudRoutes('academic-settings', 'academic-settings', AcademicSettingController::class);
+
+        Route::prefix('academic-classes')->name('academic-classes.')->group(function () use ($crudRoutes): void {
+            Route::get('/', [AcademicClassController::class, 'index'])->name('index');
+            Route::post('/', [AcademicClassController::class, 'store'])->name('store');
+            Route::get('/{id}', [AcademicClassController::class, 'show'])->name('show');
+            Route::put('/{id}', [AcademicClassController::class, 'update'])->name('update');
+            Route::patch('/{id}', [AcademicClassController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [AcademicClassController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [AcademicClassController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [AcademicClassController::class, 'forceDestroy'])->name('force-destroy');
+
+            Route::get('/{id}/members', [AcademicClassController::class, 'members'])->name('members');
+            Route::post('/{id}/members', [AcademicClassController::class, 'assignMember'])->name('members.assign');
+            Route::delete('/{id}/members/{studentId}', [AcademicClassController::class, 'unassignMember'])->name('members.unassign');
+            Route::post('/{id}/members/sync', [AcademicClassController::class, 'syncMembers'])->name('members.sync');
+        });
+
+        Route::prefix('schedules')->name('schedules.')->group(function (): void {
+            Route::get('timetable', [ClassScheduleController::class, 'timetable'])->name('timetable');
+            Route::get('conflicts', [ClassScheduleController::class, 'conflicts'])->name('conflicts');
+            Route::get('sections/{sectionId}/timetable', [ClassScheduleController::class, 'sectionTimetable'])->name('sections.timetable');
+            Route::get('teachers/{teacherId}/calendar', [ClassScheduleController::class, 'teacherCalendar'])->name('teachers.calendar');
+
+            Route::get('/', [ClassScheduleController::class, 'index'])->name('index');
+            Route::post('/', [ClassScheduleController::class, 'store'])->name('store');
+            Route::get('/{id}', [ClassScheduleController::class, 'show'])->name('show');
+            Route::put('/{id}', [ClassScheduleController::class, 'update'])->name('update');
+            Route::patch('/{id}', [ClassScheduleController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [ClassScheduleController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [ClassScheduleController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [ClassScheduleController::class, 'forceDestroy'])->name('force-destroy');
+        });
+
+        Route::prefix('grade-scales')->name('grade-scales.')->group(function (): void {
+            Route::get('resolve', [GradeScaleController::class, 'resolve'])->name('resolve');
+            Route::get('/', [GradeScaleController::class, 'index'])->name('index');
+            Route::post('/', [GradeScaleController::class, 'store'])->name('store');
+            Route::get('/{id}', [GradeScaleController::class, 'show'])->name('show');
+            Route::put('/{id}', [GradeScaleController::class, 'update'])->name('update');
+            Route::patch('/{id}', [GradeScaleController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [GradeScaleController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [GradeScaleController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [GradeScaleController::class, 'forceDestroy'])->name('force-destroy');
+
+            Route::get('/{id}/entries', [GradeScaleController::class, 'entries'])->name('entries');
+            Route::post('/{id}/entries', [GradeScaleController::class, 'storeEntry'])->name('entries.store');
+            Route::put('/{id}/entries/{entryId}', [GradeScaleController::class, 'updateEntry'])->name('entries.update');
+            Route::delete('/{id}/entries/{entryId}', [GradeScaleController::class, 'destroyEntry'])->name('entries.destroy');
+        });
+
+        Route::prefix('grade-records')->name('grade-records.')->group(function (): void {
+            Route::get('students/{studentId}/report', [GradeRecordController::class, 'studentReport'])->name('student-report');
+            Route::post('offerings/{offeringId}/bulk', [GradeRecordController::class, 'bulkUpsert'])->name('offerings.bulk');
+
+            Route::get('/', [GradeRecordController::class, 'index'])->name('index');
+            Route::post('/', [GradeRecordController::class, 'store'])->name('store');
+            Route::get('/{id}', [GradeRecordController::class, 'show'])->name('show');
+            Route::put('/{id}', [GradeRecordController::class, 'update'])->name('update');
+            Route::patch('/{id}', [GradeRecordController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [GradeRecordController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [GradeRecordController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [GradeRecordController::class, 'forceDestroy'])->name('force-destroy');
+
+            Route::post('/{id}/transition', [GradeRecordController::class, 'transition'])->name('transition');
+        });
+
+        Route::prefix('grade-corrections')->name('grade-corrections.')->group(function (): void {
+            Route::get('grade-records/{gradeRecordId}/history', [GradeCorrectionController::class, 'historyForGradeRecord'])->name('grade-records.history');
+
+            Route::get('/', [GradeCorrectionController::class, 'index'])->name('index');
+            Route::post('/', [GradeCorrectionController::class, 'store'])->name('store');
+            Route::get('/{id}', [GradeCorrectionController::class, 'show'])->name('show');
+            Route::put('/{id}', [GradeCorrectionController::class, 'update'])->name('update');
+            Route::patch('/{id}', [GradeCorrectionController::class, 'update'])->name('partial-update');
+            Route::delete('/{id}', [GradeCorrectionController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [GradeCorrectionController::class, 'restore'])->name('restore');
+            Route::delete('/{id}/force', [GradeCorrectionController::class, 'forceDestroy'])->name('force-destroy');
+
+            Route::post('/{id}/approve', [GradeCorrectionController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [GradeCorrectionController::class, 'reject'])->name('reject');
+        });
+
+        Route::prefix('academic')->name('academic.')->group(function (): void {
+            Route::get('dashboard', [AcademicDashboardController::class, 'index'])->name('dashboard');
+            Route::get('context', [AcademicDashboardController::class, 'context'])->name('context');
+        });
     });
 });

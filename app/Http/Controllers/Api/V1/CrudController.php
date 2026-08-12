@@ -7,6 +7,7 @@ use App\Services\CrudService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,7 +20,7 @@ use Illuminate\Routing\Redirector;
  */
 abstract class CrudController extends ApiController
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ValidatesRequests;
 
     protected CrudService $service;
 

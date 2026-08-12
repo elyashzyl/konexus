@@ -19,8 +19,18 @@ enum MasterDataType: string
     case MEDICAL_CONDITION = 'medical-condition';
     case HOSPITAL = 'hospital';
     case ENROLLMENT_STATUS = 'enrollment-status';
+    case ENROLLMENT_TYPE = 'enrollment-type';
+    case ENROLLMENT_REQUIREMENT_TYPE = 'enrollment-requirement-type';
     case PAYMENT_STATUS = 'payment-status';
     case STUDENT_STATUS = 'student-status';
+    case STUDENT_DOCUMENT_TYPE = 'student-document-type';
+
+    // Part 6 – Academic Management
+    case SUBJECT_TYPE = 'subject-type';
+    case ACADEMIC_STATUS = 'academic-status';
+    case CLASS_STATUS = 'class-status';
+    case SCHEDULE_STATUS = 'schedule-status';
+    case OFFERING_STATUS = 'offering-status';
 
     /**
      * Human readable label for the list type.
@@ -37,8 +47,16 @@ enum MasterDataType: string
             self::MEDICAL_CONDITION => 'Medical Conditions',
             self::HOSPITAL => 'Hospitals',
             self::ENROLLMENT_STATUS => 'Enrollment Statuses',
+            self::ENROLLMENT_TYPE => 'Enrollment Types',
+            self::ENROLLMENT_REQUIREMENT_TYPE => 'Enrollment Requirement Types',
             self::PAYMENT_STATUS => 'Payment Statuses',
             self::STUDENT_STATUS => 'Student Statuses',
+            self::STUDENT_DOCUMENT_TYPE => 'Student Document Types',
+            self::SUBJECT_TYPE => 'Subject Types',
+            self::ACADEMIC_STATUS => 'Academic Statuses',
+            self::CLASS_STATUS => 'Class Statuses',
+            self::SCHEDULE_STATUS => 'Schedule Statuses',
+            self::OFFERING_STATUS => 'Subject Offering Statuses',
         };
     }
 
