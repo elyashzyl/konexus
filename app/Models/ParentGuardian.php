@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\ParentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -39,6 +40,7 @@ class ParentGuardian extends Model
         'address',
         'relationship',
         'status',
+        'user_id',
         'is_active',
     ];
 
@@ -64,6 +66,16 @@ class ParentGuardian extends Model
         return $this->belongsToMany(Student::class, 'parent_student', 'parent_id', 'student_id')
             ->withPivot('is_primary')
             ->withTimestamps();
+    }
+
+    /**
+     * The user account linked to this parent (portal identity).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

@@ -2,14 +2,21 @@ import { APP_NAME, APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
-import { moduleRoutes } from '@/modules';
+import { moduleRoutes, portalRoutes } from '@/modules';
 import { useAuthStore } from '@/stores/auth';
+import { homePathForRoles, isAdmin } from '@/lib/roles';
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
     {
         path: '/',
+        name: APP_ROUTES.landing.name,
+        component: () => import('@/pages/Landing.vue'),
+        meta: { title: APP_NAME, requiresGuest: true },
+    },
+    {
+        path: '/dashboard',
         component: AppLayout,
         meta: { requiresAuth: true },
         children: [
@@ -23,7 +30,7 @@ const routes: RouteRecordRaw[] = [
                 },
             },
             {
-                path: 'settings',
+                path: '/settings',
                 component: SettingsLayout,
                 meta: { requiresAuth: true },
                 children: [
@@ -50,6 +57,7 @@ const routes: RouteRecordRaw[] = [
             ...moduleRoutes,
         ],
     },
+    ...portalRoutes,
     {
         path: '/auth',
         component: AuthLayout,
@@ -137,7 +145,11 @@ router.beforeEach(async (to) => {
     }
 
     if (to.meta.requiresGuest && auth.isAuthenticated) {
-        return { name: APP_ROUTES.dashboard.name };
+        return { path: homePathForRoles(auth.user?.roles) };
+    }
+
+    if (auth.isAuthenticated && !isAdmin(auth.user?.roles) && !to.path.startsWith('/portal/')) {
+        return { path: homePathForRoles(auth.user?.roles) };
     }
 
     return true;

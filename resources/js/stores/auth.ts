@@ -1,4 +1,4 @@
-import api, { extractError, getStoredToken, setUnauthorizedHandler, storeToken } from '@/lib/api';
+import api, { extractError, getOriginalToken, getStoredToken, setUnauthorizedHandler, storeOriginalToken, storeToken } from '@/lib/api';
 import type { AuthPayload, Role, Session, User } from '@/types';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -19,11 +19,14 @@ interface RegisterPayload {
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const token = ref<string | null>(getStoredToken());
+    const originalToken = ref<string | null>(getOriginalToken());
+    const impersonator = ref<User | null>(null);
     const status = ref<'idle' | 'loading' | 'authenticated' | 'unauthenticated'>('idle');
     const initialized = ref(false);
 
     const isAuthenticated = computed(() => status.value === 'authenticated');
     const isActive = computed(() => user.value?.is_active ?? false);
+    const isImpersonating = computed(() => originalToken.value !== null);
     const primaryRole = computed<Role | null>(() => user.value?.roles?.[0] ?? null);
     const can = computed(() => (role: string) => user.value?.roles?.some((r) => r.name === role) ?? false);
 
@@ -95,8 +98,11 @@ export const useAuthStore = defineStore('auth', () => {
     function clearAuth(): void {
         token.value = null;
         user.value = null;
+        originalToken.value = null;
+        impersonator.value = null;
         status.value = 'unauthenticated';
         storeToken(null);
+        storeOriginalToken(null);
     }
 
     async function initialize(): Promise<void> {
@@ -118,6 +124,45 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         initialized.value = true;
+    }
+
+    async function impersonate(userId: number): Promise<User> {
+        const response = await api.post<{
+            data: { token: string; user: User; impersonator: User };
+        }>(`/users/${userId}/impersonate`);
+        const data = response.data.data;
+
+        originalToken.value = token.value;
+        impersonator.value = data.impersonator;
+        storeOriginalToken(originalToken.value);
+
+        token.value = data.token;
+        user.value = data.user;
+        storeToken(token.value);
+        status.value = 'authenticated';
+
+        return user.value;
+    }
+
+    async function stopImpersonating(): Promise<void> {
+        const original = originalToken.value;
+
+        try {
+            await api.post('/users/stop-impersonating');
+        } finally {
+            if (original) {
+                token.value = original;
+                storeToken(original);
+                originalToken.value = null;
+                impersonator.value = null;
+                storeOriginalToken(null);
+
+                await fetchMe();
+                status.value = 'authenticated';
+            } else {
+                clearAuth();
+            }
+        }
     }
 
     async function sessions(): Promise<Session[]> {
@@ -153,10 +198,13 @@ export const useAuthStore = defineStore('auth', () => {
     return {
         user,
         token,
+        originalToken,
+        impersonator,
         status,
         initialized,
         isAuthenticated,
         isActive,
+        isImpersonating,
         primaryRole,
         can,
         initialize,
@@ -168,6 +216,8 @@ export const useAuthStore = defineStore('auth', () => {
         register,
         logout,
         clearAuth,
+        impersonate,
+        stopImpersonating,
         sessions,
         revokeSession,
         revokeAllSessions,

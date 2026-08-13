@@ -59,6 +59,7 @@ class GradeRecordService extends CrudService
     public function __construct(
         private readonly GradeRecordRepositoryInterface $repo,
         private readonly GradeScaleService $scaleService,
+        private readonly NotificationService $notifications,
     ) {}
 
     /**
@@ -214,7 +215,28 @@ class GradeRecordService extends CrudService
 
         $this->repo->update($record, array_merge(['status' => $status], $stamps));
 
-        return $record->fresh(['student', 'subject', 'section', 'subjectOffering']);
+        $record = $record->fresh(['student', 'subject', 'section', 'subjectOffering']);
+
+        if ($status === GradeStatus::PUBLISHED->value) {
+            $this->notifications->sendToStudentCircle(
+                $record->student,
+                'academic',
+                [
+                    'category' => 'academic',
+                    'title' => 'Grade published',
+                    'body' => sprintf(
+                        'Your %s grade (%s) has been published.',
+                        $record->subject?->name ?? 'Subject',
+                        $record->final_grade ?? '—',
+                    ),
+                    'grade_record_id' => $record->id,
+                    'subject_id' => $record->subject_id,
+                    'final_grade' => $record->final_grade,
+                ]
+            );
+        }
+
+        return $record;
     }
 
     /**

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PeopleManagementSeeder::class,
             EnrollmentConfigSeeder::class,
             EnrollmentSeeder::class,
+            DemoUsersSeeder::class,
         ]);
     }
 }

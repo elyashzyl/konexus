@@ -90,3 +90,45 @@ html {
         @apply bg-background text-foreground;
     }
 }
+
+/* Portal reveal animation — subtle staggered rise */
+@keyframes portal-rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.portal-rise {
+    animation: portal-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portal-rise {
+        animation: none;
+    }
+}
+
+/* Editorial index rule — hairline with a centered accent tick */
+.editorial-rule {
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--border)),
+        hsl(var(--border)) 38%,
+        hsl(var(--primary) / 0.45) 50%,
+        hsl(var(--border)) 62%,
+        hsl(var(--border))
+    );
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    background-position: center;
+}
+
+/* Index number styling for ledger rows */
+.index-num {
+    font-variant-numeric: tabular-nums lining-nums;
+}

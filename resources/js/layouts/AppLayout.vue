@@ -11,6 +11,6 @@ const breadcrumbs = computed<BreadcrumbItemType[]>(() => (route.meta.breadcrumbs
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <RouterView />
+        <RouterView :key="route.path" />
     </AppLayout>
 </template>

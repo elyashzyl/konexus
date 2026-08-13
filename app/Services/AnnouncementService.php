@@ -61,12 +61,15 @@ class AnnouncementService extends CrudService
     }
 
     /**
-     * Set published_at when the announcement is marked as published.
+     * Set published_at when the announcement is marked as published and derive
+     * the workflow status from the publishing flags.
      *
      * @param  array<string, mixed>  $data
      */
     private function normalizePublishing(array &$data): void
     {
+        $scheduled = ! empty($data['scheduled_at']);
+
         if (($data['published'] ?? false) && empty($data['published_at'])) {
             $data['published_at'] = now();
         }
@@ -74,5 +77,31 @@ class AnnouncementService extends CrudService
         if (isset($data['published']) && ! $data['published']) {
             $data['published_at'] = null;
         }
+
+        if (! empty($data['published']) && ! $scheduled) {
+            $data['status'] = 'published';
+        } elseif ($scheduled && empty($data['published'])) {
+            $data['status'] = 'scheduled';
+        } elseif (! isset($data['status'])) {
+            $data['status'] = 'draft';
+        }
+    }
+
+    /**
+     * The announcements currently visible to the given audience signature,
+     * including future-dated scheduled announcements for staff previews.
+     *
+     * @param  array<string, mixed>  $signature
+     * @return \Illuminate\Database\Eloquent\Collection<int, Announcement>
+     */
+    public function visibleFor(array $signature): \Illuminate\Database\Eloquent\Collection
+    {
+        return Announcement::query()
+            ->with('author')
+            ->where('is_active', true)
+            ->orderByDesc('published_at')
+            ->get()
+            ->filter(fn (Announcement $announcement) => $announcement->isVisible() && $announcement->matchesAudience($signature))
+            ->values();
     }
 }

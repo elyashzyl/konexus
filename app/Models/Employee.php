@@ -39,6 +39,7 @@ class Employee extends Model
         'hiring_type',
         'date_hired',
         'status',
+        'user_id',
         'is_active',
     ];
 
@@ -84,6 +85,16 @@ class Employee extends Model
     public function staff(): HasOne
     {
         return $this->hasOne(Staff::class);
+    }
+
+    /**
+     * The user account linked to this employee (portal identity).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

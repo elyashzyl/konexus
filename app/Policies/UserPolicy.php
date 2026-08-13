@@ -69,4 +69,12 @@ class UserPolicy
     {
         return $user->hasAnyRole(['super-administrator', 'school-administrator']);
     }
+
+    /**
+     * Determine whether the user can impersonate another account.
+     */
+    public function impersonate(User $user): bool
+    {
+        return $user->hasAnyRole(['super-administrator', 'school-administrator']);
+    }
 }

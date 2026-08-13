@@ -2,6 +2,7 @@ import type { ApiResponse } from '@/types';
 import axios, { AxiosError } from 'axios';
 
 export const TOKEN_STORAGE_KEY = 'konexus_token';
+export const ORIGINAL_TOKEN_STORAGE_KEY = 'konexus_original_token';
 
 export function getStoredToken(): string | null {
     return localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -12,6 +13,18 @@ export function storeToken(token: string | null): void {
         localStorage.setItem(TOKEN_STORAGE_KEY, token);
     } else {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+}
+
+export function getOriginalToken(): string | null {
+    return localStorage.getItem(ORIGINAL_TOKEN_STORAGE_KEY);
+}
+
+export function storeOriginalToken(token: string | null): void {
+    if (token) {
+        localStorage.setItem(ORIGINAL_TOKEN_STORAGE_KEY, token);
+    } else {
+        localStorage.removeItem(ORIGINAL_TOKEN_STORAGE_KEY);
     }
 }
 

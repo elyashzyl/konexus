@@ -5,10 +5,13 @@ use App\Http\Controllers\Api\V1\AcademicClassController;
 use App\Http\Controllers\Api\V1\AcademicSettingController;
 use App\Http\Controllers\Api\V1\AcademicTermController;
 use App\Http\Controllers\Api\V1\AcademicYearController;
+use App\Http\Controllers\Api\V1\ActivityLogController;
+use App\Http\Controllers\Api\V1\AdminDashboardController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\BackupController;
 use App\Http\Controllers\Api\V1\BuildingController;
 use App\Http\Controllers\Api\V1\CampusController;
 use App\Http\Controllers\Api\V1\ClassScheduleController;
@@ -18,13 +21,19 @@ use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EnrollmentController;
 use App\Http\Controllers\Api\V1\EnrollmentDocumentController;
 use App\Http\Controllers\Api\V1\EnrollmentRequirementController;
+use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\GradeCorrectionController;
 use App\Http\Controllers\Api\V1\GradeRecordController;
 use App\Http\Controllers\Api\V1\GradeScaleController;
 use App\Http\Controllers\Api\V1\GradeLevelController;
 use App\Http\Controllers\Api\V1\GuardianController;
 use App\Http\Controllers\Api\V1\MasterDataController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ParentController;
+use App\Http\Controllers\Api\V1\Portal\ParentPortalController;
+use App\Http\Controllers\Api\V1\Portal\StudentPortalController;
+use App\Http\Controllers\Api\V1\Portal\TeacherPortalController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\SchoolCalendarEventController;
@@ -34,9 +43,12 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\SubjectOfferingController;
+use App\Http\Controllers\Api\V1\SystemHealthController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
+use App\Http\Controllers\Api\V1\SystemSettingsGroupController;
 use App\Http\Controllers\Api\V1\TeacherAssignmentController;
 use App\Http\Controllers\Api\V1\TeacherController;
+use App\Http\Controllers\Api\V1\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -122,6 +134,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     Route::middleware('auth:sanctum')->group(function () use ($crudRoutes, $peopleRoutes): void {
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
 
+        // Grouped system settings. Registered before the settings CRUD so the
+        // `grouped` segment is never swallowed by the `{id}` route.
+        Route::get('system-settings/grouped', [SystemSettingsGroupController::class, 'index'])
+            ->middleware('roles:super-administrator,school-administrator')
+            ->name('system-settings.grouped');
+        Route::put('system-settings/grouped', [SystemSettingsGroupController::class, 'update'])
+            ->middleware('roles:super-administrator,school-administrator')
+            ->name('system-settings.grouped.update');
+
         $crudRoutes('system-settings', 'system-settings', SystemSettingController::class);
         $crudRoutes('school-profiles', 'school-profiles', SchoolProfileController::class);
         $crudRoutes('campuses', 'campuses', CampusController::class);
@@ -134,6 +155,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
         $crudRoutes('rooms', 'rooms', RoomController::class);
         $crudRoutes('sections', 'sections', SectionController::class);
         $crudRoutes('school-calendar', 'school-calendar', SchoolCalendarEventController::class);
+
+        // The targeted announcement feed of the current user. Registered before
+        // the announcements CRUD so `mine` is never swallowed by `{id}`.
+        Route::get('announcements/mine', [AnnouncementController::class, 'mine'])->name('announcements.mine');
         $crudRoutes('announcements', 'announcements', AnnouncementController::class);
         $crudRoutes('master-data', 'master-data', MasterDataController::class);
 
@@ -311,5 +336,120 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
             Route::get('dashboard', [AcademicDashboardController::class, 'index'])->name('dashboard');
             Route::get('context', [AcademicDashboardController::class, 'context'])->name('context');
         });
+
+        // ─────────────────────────────────────────
+        // Part 8 – Platform & Integration
+        // ─────────────────────────────────────────
+
+        // Global (spotlight) search for the navigation bar.
+        Route::get('search', GlobalSearchController::class)->name('search');
+
+        // Notification Center (any authenticated user).
+        Route::prefix('notifications')->name('notifications.')->group(function (): void {
+            Route::get('/', [NotificationController::class, 'index'])->name('index');
+            Route::get('unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+            Route::patch('read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
+            Route::patch('{id}/read', [NotificationController::class, 'markRead'])->name('read');
+            Route::delete('read', [NotificationController::class, 'destroyRead'])->name('destroy-read');
+        });
+
+        Route::get('notification-preferences', [NotificationController::class, 'preferences'])->name('notification-preferences.show');
+        Route::put('notification-preferences', [NotificationController::class, 'updatePreferences'])->name('notification-preferences.update');
+
+        // Portals (parent / student / teacher) – always permission-scoped to self.
+        Route::prefix('portal')->name('portal.')->group(function (): void {
+            Route::prefix('parent')->name('parent.')->group(function (): void {
+                Route::get('dashboard', [ParentPortalController::class, 'dashboard'])->name('dashboard');
+                Route::get('children', [ParentPortalController::class, 'children'])->name('children');
+                Route::get('children/{id}', [ParentPortalController::class, 'child'])->name('child');
+                Route::get('children/{id}/schedule', [ParentPortalController::class, 'childSchedule'])->name('child.schedule');
+                Route::get('children/{id}/grades', [ParentPortalController::class, 'childGrades'])->name('child.grades');
+                Route::get('children/{id}/enrollments', [ParentPortalController::class, 'childEnrollments'])->name('child.enrollments');
+                Route::get('children/{id}/documents', [ParentPortalController::class, 'childDocuments'])->name('child.documents');
+            });
+
+            Route::prefix('student')->name('student.')->group(function (): void {
+                Route::get('dashboard', [StudentPortalController::class, 'dashboard'])->name('dashboard');
+                Route::get('profile', [StudentPortalController::class, 'profile'])->name('profile');
+                Route::get('schedule', [StudentPortalController::class, 'schedule'])->name('schedule');
+                Route::get('grades', [StudentPortalController::class, 'grades'])->name('grades');
+                Route::get('enrollments', [StudentPortalController::class, 'enrollments'])->name('enrollments');
+                Route::get('documents', [StudentPortalController::class, 'documents'])->name('documents');
+            });
+
+            Route::prefix('teacher')->name('teacher.')->group(function (): void {
+                Route::get('dashboard', [TeacherPortalController::class, 'dashboard'])->name('dashboard');
+                Route::get('assignments', [TeacherPortalController::class, 'assignments'])->name('assignments');
+                Route::get('schedule', [TeacherPortalController::class, 'schedule'])->name('schedule');
+                Route::get('advisory-class', [TeacherPortalController::class, 'advisoryClass'])->name('advisory-class');
+                Route::get('sections/{sectionId}/roster', [TeacherPortalController::class, 'classRoster'])->name('sections.roster');
+                Route::get('students', [TeacherPortalController::class, 'students'])->name('students');
+            });
+        });
+
+        // Audit & Activity Center (operators only).
+        Route::prefix('activity-logs')->name('activity-logs.')
+            ->middleware('roles:super-administrator,school-administrator')
+            ->group(function (): void {
+                Route::get('/', [ActivityLogController::class, 'index'])->name('index');
+                Route::get('stats', [ActivityLogController::class, 'stats'])->name('stats');
+                Route::get('catalog', [ActivityLogController::class, 'catalog'])->name('catalog');
+                Route::get('causers', [ActivityLogController::class, 'causers'])->name('causers');
+                Route::get('{id}', [ActivityLogController::class, 'show'])->name('show');
+            });
+
+        // User Management (operators only; policies enforce finer control).
+        Route::prefix('users')->name('users.')
+            ->middleware('roles:super-administrator,school-administrator')
+            ->group(function (): void {
+                Route::get('/', [UserManagementController::class, 'index'])->name('index');
+                Route::post('/', [UserManagementController::class, 'store'])->name('store');
+                Route::get('role-options', [UserManagementController::class, 'roleOptions'])->name('role-options');
+                Route::get('{id}', [UserManagementController::class, 'show'])->name('show');
+                Route::put('{id}', [UserManagementController::class, 'update'])->name('update');
+                Route::patch('{id}', [UserManagementController::class, 'update'])->name('partial-update');
+                Route::delete('{id}', [UserManagementController::class, 'destroy'])->name('destroy');
+                Route::put('{id}/roles', [UserManagementController::class, 'roles'])->name('roles');
+                Route::patch('{id}/active', [UserManagementController::class, 'toggleActive'])->name('toggle-active');
+                Route::post('{id}/reset-password', [UserManagementController::class, 'resetPassword'])->name('reset-password');
+                Route::post('{id}/impersonate', [UserManagementController::class, 'impersonate'])->name('impersonate');
+            });
+
+        // Stop an active impersonation session. Runs with the impersonation
+        // token (owned by the impersonated user), so it must stay outside the
+        // admin-only users group above.
+        Route::post('users/stop-impersonating', [UserManagementController::class, 'stopImpersonating'])
+            ->name('users.stop-impersonating');
+
+        // System Settings (grouped / bulk).
+        // Grouped endpoints are registered earlier, before the settings CRUD.
+
+        // Admin Dashboard & Analytics.
+        Route::get('admin/dashboard', AdminDashboardController::class)
+            ->middleware('roles:super-administrator,school-administrator')
+            ->name('admin.dashboard');
+
+        // Reports Center (operators only).
+        Route::prefix('reports')->name('reports.')
+            ->middleware('roles:super-administrator,school-administrator')
+            ->group(function (): void {
+                Route::get('/', [ReportController::class, 'index'])->name('index');
+                Route::post('generate', [ReportController::class, 'generate'])->name('generate');
+            });
+
+        // System Health (super administrators only).
+        Route::get('system-health', SystemHealthController::class)
+            ->middleware('roles:super-administrator')
+            ->name('system-health');
+
+        // Backups (super administrators only).
+        Route::prefix('backups')->name('backups.')
+            ->middleware('roles:super-administrator')
+            ->group(function (): void {
+                Route::get('/', [BackupController::class, 'index'])->name('index');
+                Route::post('/', [BackupController::class, 'store'])->name('store');
+                Route::get('{id}/download', [BackupController::class, 'download'])->name('download');
+                Route::delete('{id}', [BackupController::class, 'destroy'])->name('destroy');
+            });
     });
 });

@@ -13,7 +13,8 @@ export const AUTH_ROUTES = {
 } as const;
 
 export const APP_ROUTES = {
-    dashboard: { name: 'dashboard', path: '/' },
+    landing: { name: 'landing', path: '/' },
+    dashboard: { name: 'dashboard', path: '/dashboard' },
     settings: {
         profile: { name: 'settings.profile', path: '/settings/profile' },
         password: { name: 'settings.password', path: '/settings/password' },

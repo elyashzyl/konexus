@@ -23,10 +23,18 @@ class AnnouncementResource extends JsonResource
             'category' => $this->category,
             'priority' => $this->priority,
             'target_audience' => $this->target_audience,
+            'audience' => $this->audience,
+            'status' => $this->status,
+            'scheduled_at' => $this->scheduled_at?->toISOString(),
+            'created_by' => $this->created_by,
             'author_id' => $this->author_id,
             'author' => $this->whenLoaded('author', fn () => $this->author ? [
                 'id' => $this->author->id,
                 'name' => $this->author->name,
+            ] : null),
+            'creator' => $this->whenLoaded('creator', fn () => $this->creator ? [
+                'id' => $this->creator->id,
+                'name' => $this->creator->name,
             ] : null),
             'published' => $this->published,
             'published_at' => $this->published_at?->toISOString(),

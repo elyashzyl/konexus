@@ -5,11 +5,15 @@ import FormDialog from '@/components/crud/FormDialog.vue';
 import { useCrudStore } from '@/composables/useCrudStore';
 import { loadOptions } from '@/lib/crud';
 import type { CrudColumn, CrudField, CrudItem, CrudOption } from '@/types/crud';
+import type { LucideIcon } from 'lucide-vue-next';
 import { provide, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 const props = withDefaults(
     defineProps<{
+        icon?: LucideIcon;
+        index?: string;
+        eyebrow?: string;
         title: string;
         description?: string;
         resource: string;
@@ -155,6 +159,9 @@ loadOptionSources();
 <template>
     <DataTable
         :columns="columns"
+        :icon="icon"
+        :index="index"
+        :eyebrow="eyebrow"
         :title="title"
         :description="description"
         :create-label="createLabel"

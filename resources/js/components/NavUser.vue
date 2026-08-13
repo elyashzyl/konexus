@@ -7,6 +7,14 @@ import { ChevronsUpDown } from 'lucide-vue-next';
 import UserMenuContent from './UserMenuContent.vue';
 
 const auth = useAuthStore();
+
+interface Props {
+    showSettings?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+    showSettings: true,
+});
 </script>
 
 <template>
@@ -20,7 +28,7 @@ const auth = useAuthStore();
                     </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent class="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg" side="bottom" align="end" :side-offset="4">
-                    <UserMenuContent v-if="auth.user" :user="auth.user" />
+                    <UserMenuContent v-if="auth.user" :user="auth.user" :show-settings="showSettings" />
                 </DropdownMenuContent>
             </DropdownMenu>
         </SidebarMenuItem>

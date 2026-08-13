@@ -1,8 +1,8 @@
 # KONEXUS — Technical Blueprint
 
 **Project:** KOAMISHIN School Management Information System (SMIS)
-**Phase:** Foundation (no business modules yet)
-**Status:** Implemented and verified — the blueprint below is the contract for the foundation and the extension path for all future modules.
+**Phase:** Foundation + Part 8 platform integration (notification center, portals, admin tooling)
+**Status:** Implemented and verified — Parts 1–6 foundation modules plus the Part 8 platform layer; the blueprint below is the contract for the architecture and the extension path for all future modules.
 
 Companion report: [`docs/architecture-analysis.md`](./architecture-analysis.md) (verified implementation details).
 
@@ -274,19 +274,91 @@ Every success and every failure (validation 422, auth 401, forbidden 403, not fo
 
 ---
 
-## 10. Development Roadmap
+## 10. Part 8 — Platform Integration (implemented, verified)
+
+The Part 8 layer adds the **platform surface** on top of the Parts 1–6 modules: personal notifications, role-aware portals, global search, and the administrative tooling. It is deliberately read-oriented and permission-scoped; it does not rebuild any business module.
+
+### Notification Center
+
+- `NotificationService` — dispatch in-app (DB) notifications; optional email channel gated on a real mail transport (`mail.default` not `log`/`array` and `mail.from.address` set).
+- Preferences default to **enabled** when no preference row exists; `notification_preferences` table stores a per-category × channel matrix (`database`, `email`).
+- Hooks already fire on real module events: `EnrollmentStatusChangedListener` notifies admins + the student circle; `GradeRecordService` notifies the student circle when a grade reaches `published`.
+- Endpoints: `GET/PATCH /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`, `DELETE /notifications/read`, `GET/PUT /notification-preferences`.
+
+### Announcement targeting
+
+- `announcements` gained `audience` (JSON), `status` (draft/scheduled/published), `scheduled_at`, `created_by`.
+- `AnnouncementService::normalizePublishing()` derives status from the schedule; `matchesAudience()` honors `everyone`, roles, and linked student/parent audiences.
+- `GET /announcements/mine` returns the visible feed for the current user (must be registered **before** the crud routes for `{id}`).
+- `AnnouncementController::store` stamps `created_by`/`author_id`.
+
+### Portals
+
+| Portal | Endpoints (all self-scoped to the authenticated user) |
+|---|---|
+| Parent | `GET /portal/parent/dashboard`, `/children`, `/children/{id}`, `/children/{id}/{schedule,grades,enrollments,documents}` |
+| Student | `GET /portal/student/{dashboard,schedule,grades,enrollments,documents}` |
+| Teacher | `GET /portal/teacher/{dashboard,assignments,schedule,advisory-class,students,sections/{id}/roster}` |
+
+- `PortalIdentityService` resolves the linked person by `user_id` first, then email; returns 404 for unlinked accounts.
+- `PortalDataService::moduleAvailability()` reports the Part 7 modules (finance, library, clinic, guidance, inventory) as **unavailable** — the frontend renders empty states instead of inventing data.
+- Portal API lives in `app/Http/Controllers/Api/V1/Portal/`.
+
+### Global search
+
+- `GET /search?q=` → `GlobalSearchService` groups results into `students`, `parents`, `people`, `enrollments`, `announcements`, `sections`, `subjects`, each row carrying a client-side `route`.
+
+### Admin tooling (role-gated)
+
+| Feature | Endpoints | Allowed roles |
+|---|---|---|
+| Audit & Activity Center | `GET /activity-logs`, `/activity-logs/{id}`, `/stats`, `/catalog`, `/causers` | super-admin, school-admin |
+| User Management | `GET/POST/PUT/DELETE /users`, `/users/{id}/roles`, `/toggle-active`, `/reset-password`, `/role-options` | super-admin, school-admin |
+| System Settings (grouped) | `GET/PUT /system-settings/grouped` (catalog-driven; unknown keys rejected 422) | super-admin, school-admin |
+| Admin Dashboard | `GET /admin/dashboard` (counters, status breakdowns, 6-month trend, activity snapshot) | super-admin, school-admin |
+| Reports | `GET /reports` (catalog), `POST /reports/generate` (CSV w/ UTF-8 BOM or DomPDF PDF) | super-admin, school-admin |
+| System Health | `GET /system-health` | super-admin |
+| Backups | `GET/POST /backups`, `GET /backups/{id}/download`, `DELETE /backups/{id}` | super-admin |
+
+- Audit Center hides log names under restricted prefixes (`guidance*`, `medical*`, `clinic*`, `finance*`, `payroll*`, `library*`, `backups*`, `user_sessions*`) from everyone except `super-administrator`.
+- Backups zip SQLite + `storage/app/private` onto a dedicated `backups` disk via `BackupService` (PHP ZipArchive).
+- `SystemSettingCatalog` is the single source of truth for setting groups/types; portal settings (`portal_enabled`, `parent_registration_enabled`, `student_registration_enabled`) seeded.
+- Envelope, pagination (`{items, pagination}`), `ApiController`, service layering and role middleware are reused everywhere; route order for literal segments (`announcements/mine`, `system-settings/grouped`) precedes the crud `{id}` routes.
+
+### Frontend platform module
+
+```
+resources/js/
+├── types/platform.ts        # AppNotification, ChildSummary, AcademicSummary, PortalScheduleEntry, …
+├── lib/platformApi.ts       # typed clients: notifications, search, activity, users, settings, reports, backups, health, admin
+├── lib/portalApi.ts         # typed clients: parent/student/teacher portals
+├── stores/notifications.ts  # list, unread count, mark-read, preferences
+├── components/              # NotificationBell.vue, GlobalSearch.vue (Ctrl+K), header/sidebar integration
+├── modules/platform/        # config.ts (permission-aware nav) + routes.ts (lazy pages)
+└── pages/
+    ├── portal/              # StudentPortal, ParentPortal, ParentChild, TeacherPortal
+    ├── notifications/       # Index (filters, mark-all-read)
+    └── admin/               # Dashboard, ActivityLogs, Users, Settings, Reports, Maintenance
+```
+
+- Sidebar renders `PLATFORM_NAV` filtered by `auth.can(role)`; portals are role-aware and show empty states for unlinked/unavailable data.
+- Verification: `vue-tsc --noEmit`, `eslint`, and `vite build` all pass.
+
+---
+
+## 11. Development Roadmap
 
 **Phase 1 — Foundation (DONE, verified):** REST API + envelopes + error mapping; Sanctum auth + sessions + password reset; 14 roles + super admin seeding; repository/service layering; SPA conversion (router, guards, Pinia auth, Zod forms, error pages); KONEXUS design system; 26 backend tests green; `pint`/`eslint`/`vue-tsc`/`vite build` all pass.
 
-**Phase 2 — Permissions & core config:** define a permissions catalog per module; bind permissions to roles; add gates/middleware enforcement; school-year/term and school profile module; tenant-safe queries.
+**Phase 2 — Core modules (DONE, Parts 1–6):** registrar (students, enrollments, documents), academics (subjects, sections, classes, grade records), announcements, communication, and the supporting kernel.
 
-**Phase 3 — Registrar & academics:** student profiles, enrollments, sections, subjects, classes, grading; student/parent portal basics.
+**Part 8 — Platform layer (DONE, verified):** notification center + preferences, announcement targeting, three portals, global search, audit center, user management, grouped settings, admin dashboard, reports (CSV/PDF), backups + system health. Backend: 101 tests / 452 assertions green. Frontend: platform module shipped and verified.
 
-**Phase 4 — Operations:** finance (billing/payments), guidance, clinic, library, HR, inventory modules.
+**Phase 4 — Operations (NOT rebuilt; surfaced as unavailable):** finance (billing/payments), guidance, clinic, library, HR, inventory modules. Portals and dashboards report these as unavailable rather than fabricating data.
 
 **Phase 5 — Reporting:** DomPDF invoices/certificates (installed) and Excel exports (maatwebsite/excel — pinned to a PHP 8.5-compatible release when available).
 
-**Phase 6 — Hardening & rollout:** email verification, 2FA, audit-review UI, activity-log retention, caching, queue workers, MySQL 8 provisioning, deployment (TLS, same-origin build).
+**Phase 6 — Hardening & rollout:** email verification, 2FA, activity-log retention, caching, queue workers, MySQL 8 provisioning, deployment (TLS, same-origin build).
 
 ### Verification commands
 ```bash

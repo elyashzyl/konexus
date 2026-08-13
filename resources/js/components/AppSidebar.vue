@@ -5,10 +5,16 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { APP_ROUTES } from '@/constants/app';
 import { FOUNDATION_MODULES } from '@/modules/foundation/config';
+import { PLATFORM_NAV } from '@/modules/platform/config';
+import { useAuthStore } from '@/stores/auth';
+import { isAdmin } from '@/lib/roles';
 import { type NavItem } from '@/types';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import AppLogo from './AppLogo.vue';
+
+const auth = useAuthStore();
 
 const mainNavItems: NavItem[] = [
     {
@@ -18,11 +24,23 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const schoolNavItems: NavItem[] = FOUNDATION_MODULES.map((module) => ({
-    title: module.title,
-    href: module.path,
-    icon: module.icon,
-}));
+const schoolNavItems = computed<NavItem[]>(() =>
+    isAdmin(auth.user?.roles)
+        ? FOUNDATION_MODULES.map((module) => ({
+              title: module.title,
+              href: module.path,
+              icon: module.icon,
+          }))
+        : [],
+);
+
+const platformNavItems = computed<NavItem[]>(() =>
+    PLATFORM_NAV.filter((entry) => !entry.roles || entry.roles.some((role) => auth.can(role))).map((entry) => ({
+        title: entry.title,
+        href: entry.path,
+        icon: entry.icon,
+    })),
+);
 
 const footerNavItems: NavItem[] = [
     {
@@ -54,7 +72,8 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" label="Platform" />
-            <NavMain :items="schoolNavItems" label="School" />
+            <NavMain v-if="platformNavItems.length > 0" :items="platformNavItems" label="Portals & Admin" />
+            <NavMain v-if="schoolNavItems.length > 0" :items="schoolNavItems" label="School" />
         </SidebarContent>
 
         <SidebarFooter>

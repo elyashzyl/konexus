@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
+import { AUTH_ROUTES } from '@/constants/app';
 import { extractError, extractFieldErrors } from '@/lib/api';
+import { homePathForRoles, isAdmin } from '@/lib/roles';
 import { loginSchema, type LoginFormValues } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/auth';
 import { LoaderCircle } from 'lucide-vue-next';
@@ -44,7 +45,11 @@ const submit = async () => {
         toast.success('Logged in successfully.');
         const redirect = route.query.redirect;
 
-        await router.push(typeof redirect === 'string' ? redirect : APP_ROUTES.dashboard.path);
+        if (isAdmin(auth.user?.roles) && typeof redirect === 'string') {
+            await router.push(redirect);
+        } else {
+            await router.push(homePathForRoles(auth.user?.roles));
+        }
     } catch (error) {
         toast.error(extractError(error));
         errors.value = Object.fromEntries(Object.entries(extractFieldErrors(error)).map(([key, messages]) => [key, messages[0] ?? '']));

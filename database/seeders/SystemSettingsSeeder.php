@@ -25,6 +25,9 @@ class SystemSettingsSeeder extends Seeder
         ['notifications', 'sms_enabled', 'false', 'boolean'],
         ['notifications', 'email_enabled', 'true', 'boolean'],
         ['appearance', 'accent_color', 'indigo', 'string'],
+        ['portal', 'portal_enabled', 'true', 'boolean'],
+        ['portal', 'parent_registration_enabled', 'true', 'boolean'],
+        ['portal', 'student_registration_enabled', 'true', 'boolean'],
     ];
 
     /**

@@ -9,9 +9,12 @@ import { useRouter } from 'vue-router';
 
 interface Props {
     user: User;
+    showSettings?: boolean;
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+    showSettings: true,
+});
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -29,7 +32,7 @@ const handleLogout = async () => {
         </div>
     </DropdownMenuLabel>
     <DropdownMenuSeparator />
-    <DropdownMenuGroup>
+    <DropdownMenuGroup v-if="showSettings">
         <DropdownMenuItem as-child>
             <RouterLink class="block w-full" :to="APP_ROUTES.settings.profile.path" as="button">
                 <Settings class="mr-2 h-4 w-4" />
