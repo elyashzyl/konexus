@@ -18,9 +18,7 @@ const router = useRouter();
 <template>
     <div class="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/40 px-6">
         <div class="flex flex-col items-center gap-6 text-center">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <AppLogoIcon class="size-8 fill-current" />
-            </div>
+            <AppLogoIcon class="size-10 rounded-xl" />
 
             <div class="space-y-2">
                 <p class="text-6xl font-extrabold tracking-tight text-primary">{{ status }}</p>

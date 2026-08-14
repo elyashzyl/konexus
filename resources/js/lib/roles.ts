@@ -1,6 +1,6 @@
 import type { Role } from '@/types';
 
-export const ADMIN_ROLES = ['super-administrator', 'school-administrator'];
+export const ADMIN_ROLES = ['super-administrator', 'school-administrator', 'platform-administrator'];
 
 export const STAFF_ROLES = [
     'principal',
@@ -30,6 +30,7 @@ export const ROLE_HOME_PATHS: Record<string, string> = {
     'inventory-officer': '/portal/staff/inventory-officer',
     'super-administrator': '/dashboard',
     'school-administrator': '/dashboard',
+    'platform-administrator': '/admin/subscription',
 };
 
 /**

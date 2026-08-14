@@ -30,7 +30,7 @@ const props = withDefaults(
         submitting: false,
         fieldErrors: () => ({}),
         submitLabel: 'Save',
-        contentClass: 'max-w-2xl',
+        contentClass: 'max-w-3xl',
     },
 );
 
@@ -121,8 +121,8 @@ function handleSubmit(): void {
                 <DialogDescription v-if="description">{{ description }}</DialogDescription>
             </DialogHeader>
 
-            <form id="crud-form" class="grid gap-4 py-2" @submit.prevent="handleSubmit">
-                <div v-for="field in fields" :key="field.name" :class="field.fullWidth ? 'col-span-full' : 'grid-cols-2'">
+            <form id="crud-form" class="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2" @submit.prevent="handleSubmit">
+                <div v-for="field in fields" :key="field.name" :class="{ 'col-span-full': field.fullWidth }">
                     <template v-if="field.type === 'switch'">
                         <div class="flex items-center justify-between rounded-lg border p-4">
                             <div>

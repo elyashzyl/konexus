@@ -10,6 +10,16 @@ interface LoginPayload {
 }
 
 interface RegisterPayload {
+    school_name: string;
+    short_name?: string;
+    school_id?: string;
+    region?: string;
+    division?: string;
+    district?: string;
+    address?: string;
+    contact_number?: string;
+    school_email?: string;
+    website?: string;
     name: string;
     email: string;
     password: string;

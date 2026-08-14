@@ -23,6 +23,8 @@ export interface User {
     avatar: string | null;
     email_verified_at: string | null;
     is_active: boolean;
+    school_profile_id: number | null;
+    school: { id: number; name: string; short_name: string | null } | null;
     last_login_at: string | null;
     roles: Role[];
     created_at: string;

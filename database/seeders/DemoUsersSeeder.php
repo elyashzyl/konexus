@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Enums\RoleEnum;
+use App\Models\Campus;
 use App\Models\Employee;
+use App\Models\Enrollment;
 use App\Models\ParentGuardian;
+use App\Models\SchoolProfile;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
@@ -53,6 +56,34 @@ class DemoUsersSeeder extends Seeder
     }
 
     /**
+     * The school to anchor newly created demo users to.
+     */
+    private function defaultSchoolId(): ?int
+    {
+        return SchoolProfile::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->value('id');
+    }
+
+    /**
+     * The school id for a student, derived from its most recent enrollment.
+     */
+    private function schoolIdForStudent(Student $student): ?int
+    {
+        $campusId = Enrollment::query()
+            ->where('student_id', $student->id)
+            ->latest('id')
+            ->value('campus_id');
+
+        if ($campusId) {
+            return Campus::query()->whereKey($campusId)->value('school_profile_id');
+        }
+
+        return $this->defaultSchoolId();
+    }
+
+    /**
      * A teacher user and an adviser user, each linked to a teaching Employee
      * that already owns a Teacher profile.
      */
@@ -96,6 +127,7 @@ class DemoUsersSeeder extends Seeder
                     RoleEnum::STUDENT->roleName(),
                     $student->full_name,
                     "demo.student.{$student->id}@konexus.local",
+                    $this->schoolIdForStudent($student),
                 );
 
                 $student->update(['user_id' => $user->id]);
@@ -117,6 +149,7 @@ class DemoUsersSeeder extends Seeder
                     RoleEnum::PARENT->roleName(),
                     $parent->full_name,
                     "demo.parent.{$parent->id}@konexus.local",
+                    $this->defaultSchoolId(),
                 );
 
                 $parent->update(['user_id' => $user->id]);
@@ -126,8 +159,10 @@ class DemoUsersSeeder extends Seeder
     /**
      * Create a user if missing, refresh its role, and reset its password.
      */
-    private function makeUser(string $roleName, string $name, string $email): User
+    private function makeUser(string $roleName, string $name, string $email, ?int $schoolProfileId = null): User
     {
+        $schoolProfileId ??= $this->defaultSchoolId();
+
         $user = User::query()->firstOrCreate(
             ['email' => $email],
             [
@@ -135,11 +170,16 @@ class DemoUsersSeeder extends Seeder
                 'password' => Hash::make(self::PASSWORD),
                 'is_active' => true,
                 'email_verified_at' => now(),
+                'school_profile_id' => $schoolProfileId,
             ],
         );
 
         if (! $user->hasRole($roleName)) {
             $user->syncRoles($roleName);
+        }
+
+        if ($user->school_profile_id !== $schoolProfileId) {
+            $user->forceFill(['school_profile_id' => $schoolProfileId])->save();
         }
 
         $user->forceFill(['password' => Hash::make(self::PASSWORD), 'is_active' => true])->save();

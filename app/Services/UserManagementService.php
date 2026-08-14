@@ -31,7 +31,7 @@ class UserManagementService
     public function paginate(array $filters): LengthAwarePaginator
     {
         return User::query()
-            ->with('roles')
+            ->with(['roles', 'schoolProfile:id,name,short_name'])
             ->when(filled($filters['search'] ?? null), fn (Builder $q) => $q->where(function (Builder $q) use ($filters): void {
                 $q->where('name', 'like', '%'.$filters['search'].'%')
                     ->orWhere('email', 'like', '%'.$filters['search'].'%');
@@ -57,6 +57,7 @@ class UserManagementService
                 'email' => $data['email'],
                 'password' => $data['password'],
                 'is_active' => (bool) ($data['is_active'] ?? true),
+                'school_profile_id' => $data['school_profile_id'] ?? null,
             ]);
 
             if (! empty($data['roles'])) {
@@ -80,6 +81,10 @@ class UserManagementService
                 'email' => $data['email'] ?? null,
                 'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
             ], fn ($value) => $value !== null);
+
+            if (array_key_exists('school_profile_id', $data)) {
+                $attributes['school_profile_id'] = $data['school_profile_id'];
+            }
 
             if (filled($data['password'] ?? null)) {
                 $attributes['password'] = $data['password'];

@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AUTH_ROUTES } from '@/constants/app';
+import { APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
 import { extractError, extractFieldErrors } from '@/lib/api';
 import { homePathForRoles, isAdmin } from '@/lib/roles';
 import { loginSchema, type LoginFormValues } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/auth';
 import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 const route = useRoute();
@@ -73,6 +73,7 @@ const submit = async () => {
                     autocomplete="email"
                     v-model="form.email"
                     placeholder="email@example.com"
+                    class="h-9 px-2.5 py-1.5"
                 />
                 <InputError :message="errors.email" />
             </div>
@@ -90,6 +91,7 @@ const submit = async () => {
                     autocomplete="current-password"
                     v-model="form.password"
                     placeholder="Password"
+                    class="h-9 px-2.5 py-1.5"
                 />
                 <InputError :message="errors.password" />
             </div>
@@ -101,10 +103,20 @@ const submit = async () => {
                 </Label>
             </div>
 
-            <Button type="submit" class="mt-4 w-full" tabindex="4" :disabled="processing">
-                <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
-                Log in
-            </Button>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <Button
+                    type="submit"
+                    class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]"
+                    tabindex="4"
+                    :disabled="processing"
+                >
+                    <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
+                    Log in
+                </Button>
+                <Button type="button" class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]" tabindex="5" as-child>
+                    <RouterLink :to="APP_ROUTES.landing.path">Landing Page</RouterLink>
+                </Button>
+            </div>
         </div>
 
         <div class="text-center text-sm text-muted-foreground">

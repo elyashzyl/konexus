@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             EnrollmentConfigSeeder::class,
             EnrollmentSeeder::class,
             DemoUsersSeeder::class,
+            PlatformSubscriptionSeeder::class,
         ]);
     }
 }

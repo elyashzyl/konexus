@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { moduleRoutes, portalRoutes } from '@/modules';
+import { FOUNDATION_MODULES } from '@/modules/foundation/config';
 import { useAuthStore } from '@/stores/auth';
 import { homePathForRoles, isAdmin } from '@/lib/roles';
 import type { RouteRecordRaw } from 'vue-router';
@@ -67,25 +68,25 @@ const routes: RouteRecordRaw[] = [
                 path: 'login',
                 name: AUTH_ROUTES.login.name,
                 component: () => import('@/pages/auth/Login.vue'),
-                meta: { title: 'Log in' },
+                meta: { title: 'Log in', description: 'Welcome back — sign in to your school portal.' },
             },
             {
                 path: 'register',
                 name: AUTH_ROUTES.register.name,
                 component: () => import('@/pages/auth/Register.vue'),
-                meta: { title: 'Create an account' },
+                meta: { title: 'Create an account', description: 'Join KONEXUS and get started in minutes.' },
             },
             {
                 path: 'forgot-password',
                 name: AUTH_ROUTES['forgot-password'].name,
                 component: () => import('@/pages/auth/ForgotPassword.vue'),
-                meta: { title: 'Forgot password' },
+                meta: { title: 'Forgot password', description: "Enter your email and we'll send you a reset link." },
             },
             {
                 path: 'reset-password',
                 name: AUTH_ROUTES['reset-password'].name,
                 component: () => import('@/pages/auth/ResetPassword.vue'),
-                meta: { title: 'Reset password' },
+                meta: { title: 'Reset password', description: 'Choose a new password for your account.' },
             },
         ],
     },
@@ -149,7 +150,28 @@ router.beforeEach(async (to) => {
     }
 
     if (auth.isAuthenticated && !isAdmin(auth.user?.roles) && !to.path.startsWith('/portal/')) {
-        return { path: homePathForRoles(auth.user?.roles) };
+        const home = homePathForRoles(auth.user?.roles);
+
+        if (home && to.path !== home) {
+            return { path: home };
+        }
+    }
+
+    if (auth.isAuthenticated && to.path.startsWith('/admin/subscription')) {
+        const names = (auth.user?.roles ?? []).map((role) => role.name);
+        const isPlatformOperator = names.includes('super-administrator') || names.includes('platform-administrator');
+
+        if (!isPlatformOperator) {
+            return { path: homePathForRoles(auth.user?.roles) };
+        }
+    }
+
+    if (auth.isAuthenticated && isAdmin(auth.user?.roles) && !auth.can('school-administrator')) {
+        const foundationPaths = FOUNDATION_MODULES.map((module) => module.path);
+
+        if (foundationPaths.some((path) => to.path.startsWith(path))) {
+            return { path: homePathForRoles(auth.user?.roles) };
+        }
     }
 
     return true;

@@ -5,6 +5,7 @@ namespace Tests\Feature\Modules;
 use App\Enums\RoleEnum;
 use App\Models\Announcement;
 use App\Models\Role;
+use App\Models\SchoolProfile;
 use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -31,9 +32,9 @@ class PlatformModuleTest extends TestCase
         return $user;
     }
 
-    private function schoolAdmin(): User
+    private function schoolAdmin(?SchoolProfile $school = null): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['school_profile_id' => $school?->id]);
         $user->assignRole(RoleEnum::SCHOOL_ADMINISTRATOR->roleName());
 
         return $user;
@@ -214,6 +215,7 @@ class PlatformModuleTest extends TestCase
     public function test_super_admin_can_manage_users(): void
     {
         $admin = $this->superAdmin();
+        $school = SchoolProfile::factory()->create();
 
         $response = $this->actingAs($admin)
             ->postJson('/api/v1/users', [
@@ -221,13 +223,119 @@ class PlatformModuleTest extends TestCase
                 'email' => 'jane@example.com',
                 'password' => 'secret123',
                 'roles' => ['registrar'],
+                'school_profile_id' => $school->id,
             ])
             ->assertCreated();
 
-        $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
+        $this->assertDatabaseHas('users', [
+            'email' => 'jane@example.com',
+            'school_profile_id' => $school->id,
+        ]);
         $this->assertDatabaseHas('model_has_roles', [
             'model_id' => $response->json('data.id'),
             'role_id' => Role::query()->where('name', 'registrar')->first()->id,
+        ]);
+    }
+
+    public function test_school_roles_require_a_school_assignment(): void
+    {
+        $admin = $this->superAdmin();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'No School Registrar',
+                'email' => 'noschool@example.com',
+                'password' => 'secret123',
+                'roles' => ['registrar'],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['school_profile_id']);
+    }
+
+    public function test_platform_roles_cannot_be_assigned_to_a_school(): void
+    {
+        $admin = $this->superAdmin();
+        $school = SchoolProfile::factory()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'Platform Admin',
+                'email' => 'platform@example.com',
+                'password' => 'secret123',
+                'roles' => ['platform-administrator'],
+                'school_profile_id' => $school->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['school_profile_id']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'Platform Admin',
+                'email' => 'platform@example.com',
+                'password' => 'secret123',
+                'roles' => ['platform-administrator'],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.school_profile_id', null);
+    }
+
+    public function test_email_uniqueness_is_scoped_per_school(): void
+    {
+        $admin = $this->superAdmin();
+        $schoolA = SchoolProfile::factory()->create();
+        $schoolB = SchoolProfile::factory()->create();
+
+        // The same email is allowed in two different schools.
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'A Registrar',
+                'email' => 'shared@example.com',
+                'password' => 'secret123',
+                'roles' => ['registrar'],
+                'school_profile_id' => $schoolA->id,
+            ])->assertCreated();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'B Registrar',
+                'email' => 'shared@example.com',
+                'password' => 'secret123',
+                'roles' => ['registrar'],
+                'school_profile_id' => $schoolB->id,
+            ])->assertCreated();
+
+        // ...but rejected within the same school.
+        $this->actingAs($admin)
+            ->postJson('/api/v1/users', [
+                'name' => 'Duplicate Registrar',
+                'email' => 'shared@example.com',
+                'password' => 'secret123',
+                'roles' => ['registrar'],
+                'school_profile_id' => $schoolA->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_school_admin_can_only_create_users_in_their_own_school(): void
+    {
+        $school = SchoolProfile::factory()->create();
+        $otherSchool = SchoolProfile::factory()->create();
+        $operator = $this->schoolAdmin($school);
+
+        $response = $this->actingAs($operator)
+            ->postJson('/api/v1/users', [
+                'name' => 'Own Registrar',
+                'email' => 'own@example.com',
+                'password' => 'secret123',
+                'roles' => ['registrar'],
+                'school_profile_id' => $otherSchool->id,
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'own@example.com',
+            'school_profile_id' => $school->id,
         ]);
     }
 

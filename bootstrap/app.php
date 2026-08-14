@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Listeners\SubscriptionEventNotifier;
 use App\Providers\RateLimitServiceProvider;
 use App\Providers\RepositoryServiceProvider;
 use App\Support\ApiResponse;
@@ -24,12 +26,18 @@ return Application::configure(basePath: dirname(__DIR__))
         RepositoryServiceProvider::class,
         RateLimitServiceProvider::class,
     ])
+    ->withEvents(discover: [
+        __DIR__.'/../app/Listeners',
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'auth' => Authenticate::class,
 
             // KONEXUS foundation middleware
             'roles' => EnsureUserHasRole::class,
+
+            // Part 10 – subscription feature gating
+            'feature' => EnsureFeatureAccess::class,
 
             // Spatie Laravel Permission middleware
             'role' => RoleMiddleware::class,

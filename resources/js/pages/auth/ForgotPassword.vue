@@ -4,12 +4,13 @@ import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AUTH_ROUTES } from '@/constants/app';
+import { APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
 import { extractError, extractFieldErrors } from '@/lib/api';
 import { forgotPasswordSchema, type ForgotPasswordFormValues } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/auth';
 import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 const auth = useAuthStore();
@@ -56,14 +57,17 @@ const submit = async () => {
         <form @submit.prevent="submit">
             <div class="grid gap-2">
                 <Label for="email">Email address</Label>
-                <Input id="email" type="email" name="email" autocomplete="off" v-model="form.email" autofocus placeholder="email@example.com" />
+                <Input id="email" type="email" name="email" autocomplete="off" v-model="form.email" autofocus placeholder="email@example.com" class="h-9 px-2.5 py-1.5" />
                 <InputError :message="errors.email" />
             </div>
 
-            <div class="my-6 flex items-center justify-start">
-                <Button class="w-full" :disabled="processing">
+            <div class="my-6 grid grid-cols-2 gap-3">
+                <Button type="submit" class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]" :disabled="processing">
                     <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
                     Email password reset link
+                </Button>
+                <Button type="button" class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]" as-child>
+                    <RouterLink :to="APP_ROUTES.landing.path">Landing Page</RouterLink>
                 </Button>
             </div>
         </form>

@@ -7,7 +7,6 @@ import { APP_ROUTES } from '@/constants/app';
 import { FOUNDATION_MODULES } from '@/modules/foundation/config';
 import { PLATFORM_NAV } from '@/modules/platform/config';
 import { useAuthStore } from '@/stores/auth';
-import { isAdmin } from '@/lib/roles';
 import { type NavItem } from '@/types';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -25,7 +24,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const schoolNavItems = computed<NavItem[]>(() =>
-    isAdmin(auth.user?.roles)
+    auth.can('school-administrator')
         ? FOUNDATION_MODULES.map((module) => ({
               title: module.title,
               href: module.path,

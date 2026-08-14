@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Enums\RoleEnum;
 use App\Exceptions\ApiException;
+use App\Models\SchoolProfile;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -22,6 +25,7 @@ class AuthService
         private readonly UserRepositoryInterface $users,
         private readonly AuthFactory $auth,
         private readonly Hasher $hasher,
+        private readonly TenantService $tenants,
     ) {}
 
     /**
@@ -47,7 +51,7 @@ class AuthService
 
         return [
             'token' => $token->plainTextToken,
-            'user' => $user->load('roles:id,name,label,description,guard_name'),
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
         ];
     }
 
@@ -70,7 +74,56 @@ class AuthService
 
         return [
             'token' => $token->plainTextToken,
-            'user' => $user->load('roles:id,name,label,description,guard_name'),
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
+        ];
+    }
+
+    /**
+     * Register a school together with its administrator account.
+     *
+     * The school profile is created first, its billing tenant is derived from
+     * it, and the registering administrator is anchored to the school as a
+     * school administrator.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{token: string, user: User}
+     */
+    public function registerSchool(array $attributes, string $tokenName = 'web'): array
+    {
+        $school = DB::transaction(function () use ($attributes): SchoolProfile {
+            $school = SchoolProfile::query()->create([
+                'name' => $attributes['school_name'],
+                'short_name' => $attributes['short_name'] ?? null,
+                'school_id' => $attributes['school_id'] ?? null,
+                'region' => $attributes['region'] ?? null,
+                'division' => $attributes['division'] ?? null,
+                'district' => $attributes['district'] ?? null,
+                'address' => $attributes['address'] ?? null,
+                'contact_number' => $attributes['contact_number'] ?? null,
+                'email' => $attributes['school_email'] ?? null,
+                'website' => $attributes['website'] ?? null,
+            ]);
+
+            $this->tenants->resolveForSchool($school);
+
+            return $school;
+        });
+
+        $user = $this->users->create([
+            'name' => $attributes['name'],
+            'email' => $attributes['email'],
+            'password' => $attributes['password'],
+            'is_active' => true,
+            'school_profile_id' => $school->id,
+        ]);
+
+        $user->assignRole(RoleEnum::SCHOOL_ADMINISTRATOR->roleName());
+
+        $token = $user->createToken($tokenName);
+
+        return [
+            'token' => $token->plainTextToken,
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
         ];
     }
 
@@ -165,7 +218,7 @@ class AuthService
             'email' => $attributes['email'],
         ])->save();
 
-        return $user->load('roles:id,name,label,description,guard_name');
+        return $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']);
     }
 
     /**

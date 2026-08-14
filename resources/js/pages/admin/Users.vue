@@ -4,14 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,10 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractError, extractFieldErrors } from '@/lib/api';
+import { loadOptions } from '@/lib/crud';
 import { platformApi, type AdminUser, type UserInput } from '@/lib/platformApi';
 import { homePathForRoles } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
-import { Eye, KeyRound, Pencil, Plus, UserCog, Trash2 } from 'lucide-vue-next';
+import type { CrudOption } from '@/types/crud';
+import { Eye, KeyRound, Pencil, Plus, Trash2, UserCog } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -39,18 +34,25 @@ const perPage = 15;
 const search = ref('');
 const roleFilter = ref<'all' | string>('all');
 const roleOptions = ref<{ name: string; label: string }[]>([]);
+const schools = ref<CrudOption[]>([]);
 const fieldErrors = ref<Record<string, string[]>>({});
 
 const dialogOpen = ref(false);
 const editing = ref<AdminUser | null>(null);
-const form = ref<UserInput>({ name: '', email: '', password: '', is_active: true, roles: [] });
+const form = ref<UserInput>({ name: '', email: '', password: '', is_active: true, roles: [], school_profile_id: null });
 
 const resetDialogOpen = ref(false);
 const resetPasswordValue = ref('');
 
+const isPlatformActor = computed(
+    () => auth.user?.roles.some((r) => r.name === 'super-administrator' || r.name === 'platform-administrator') ?? false,
+);
+
 onMounted(async () => {
     try {
-        roleOptions.value = await platformApi.users.roleOptions();
+        const [roles, schoolOptions] = await Promise.all([platformApi.users.roleOptions(), loadOptions('school-profiles')]);
+        roleOptions.value = roles;
+        schools.value = schoolOptions;
     } catch (error) {
         toast.error(extractError(error));
     }
@@ -77,7 +79,14 @@ async function refresh(): Promise<void> {
 
 function openCreate(): void {
     editing.value = null;
-    form.value = { name: '', email: '', password: '', is_active: true, roles: [] };
+    form.value = {
+        name: '',
+        email: '',
+        password: '',
+        is_active: true,
+        roles: [],
+        school_profile_id: isPlatformActor.value ? null : (auth.user?.school_profile_id ?? null),
+    };
     fieldErrors.value = {};
     dialogOpen.value = true;
 }
@@ -90,6 +99,7 @@ function openEdit(user: AdminUser): void {
         password: '',
         is_active: user.is_active,
         roles: user.roles.map((role) => role.name),
+        school_profile_id: user.school_profile_id,
     };
     fieldErrors.value = {};
     dialogOpen.value = true;
@@ -99,7 +109,11 @@ async function save(): Promise<void> {
     saving.value = true;
     fieldErrors.value = {};
     try {
-        const payload: UserInput = { ...form.value, roles: form.value.roles ?? [] };
+        const payload: UserInput = {
+            ...form.value,
+            roles: form.value.roles ?? [],
+            school_profile_id: isPlatformActor.value ? (form.value.school_profile_id ?? null) : undefined,
+        };
         if (!payload.password) {
             delete payload.password;
         }
@@ -170,10 +184,11 @@ async function impersonate(user: AdminUser): Promise<void> {
     }
 }
 
-const canImpersonate = computed(() => (user: AdminUser) =>
-    user.is_active &&
-    user.id !== auth.user?.id &&
-    !user.roles.some((role) => role.name === 'super-administrator' || role.name === 'school-administrator'),
+const canImpersonate = computed(
+    () => (user: AdminUser) =>
+        user.is_active &&
+        user.id !== auth.user?.id &&
+        !user.roles.some((role) => role.name === 'super-administrator' || role.name === 'school-administrator'),
 );
 
 const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
@@ -181,9 +196,11 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
 
 <template>
     <div class="relative">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]" />
+        <div
+            class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]"
+        />
 
-        <div class="relative w-full px-5 pt-10 pb-20 sm:px-8 lg:px-12">
+        <div class="relative w-full px-5 pb-20 pt-10 sm:px-8 lg:px-12">
             <AdminPageHeader
                 :icon="UserCog"
                 index="02"
@@ -198,8 +215,25 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
 
             <section class="portal-rise mt-10">
                 <div class="flex flex-wrap items-center gap-2">
-                    <Input v-model="search" placeholder="Search users…" class="w-56" @keydown.enter="page = 1; refresh()" />
-                    <Select :model-value="roleFilter" @update:model-value="(v: string) => { roleFilter = v; page = 1; refresh(); }">
+                    <Input
+                        v-model="search"
+                        placeholder="Search users…"
+                        class="w-56"
+                        @keydown.enter="
+                            page = 1;
+                            refresh();
+                        "
+                    />
+                    <Select
+                        :model-value="roleFilter"
+                        @update:model-value="
+                            (v: string) => {
+                                roleFilter = v;
+                                page = 1;
+                                refresh();
+                            }
+                        "
+                    >
                         <SelectTrigger class="w-44">
                             <SelectValue :placeholder="roleFilter === 'all' ? 'All roles' : roleFilter" />
                         </SelectTrigger>
@@ -208,7 +242,15 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                             <SelectItem v-for="role in roleOptions" :key="role.name" :value="role.name">{{ role.label }}</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="sm" @click="page = 1; refresh()">Apply</Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        @click="
+                            page = 1;
+                            refresh();
+                        "
+                        >Apply</Button
+                    >
                     <div class="ml-auto text-sm text-muted-foreground">{{ total }} users</div>
                 </div>
             </section>
@@ -228,6 +270,7 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>User</TableHead>
+                                    <TableHead>School</TableHead>
                                     <TableHead>Roles</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Last login</TableHead>
@@ -239,6 +282,14 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                                     <TableCell>
                                         <div class="font-medium">{{ user.name }}</div>
                                         <div class="text-xs text-muted-foreground">{{ user.email }}</div>
+                                    </TableCell>
+                                    <TableCell class="text-xs text-muted-foreground">
+                                        {{
+                                            user.school?.name ??
+                                            (user.roles.some((r) => r.name === 'super-administrator' || r.name === 'platform-administrator')
+                                                ? 'Platform'
+                                                : '—')
+                                        }}
                                     </TableCell>
                                     <TableCell>
                                         <div class="flex flex-wrap gap-1">
@@ -253,7 +304,13 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                                     </TableCell>
                                     <TableCell class="text-right">
                                         <div class="flex justify-end gap-1">
-                                            <Button v-if="canImpersonate(user)" variant="ghost" size="icon" aria-label="Impersonate" @click="impersonate(user)">
+                                            <Button
+                                                v-if="canImpersonate(user)"
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label="Impersonate"
+                                                @click="impersonate(user)"
+                                            >
                                                 <Eye class="size-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" aria-label="Edit" @click="openEdit(user)">
@@ -272,83 +329,137 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                         </Table>
 
                         <div v-if="total > perPage" class="mt-4 flex items-center justify-end gap-2">
-                            <Button variant="outline" size="sm" :disabled="page <= 1" @click="page--; refresh()">Previous</Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="page <= 1"
+                                @click="
+                                    page--;
+                                    refresh();
+                                "
+                                >Previous</Button
+                            >
                             <span class="text-sm text-muted-foreground">Page {{ page }} of {{ lastPage }}</span>
-                            <Button variant="outline" size="sm" :disabled="page >= lastPage" @click="page++; refresh()">Next</Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="page >= lastPage"
+                                @click="
+                                    page++;
+                                    refresh();
+                                "
+                                >Next</Button
+                            >
                         </div>
                     </CardContent>
                 </Card>
             </section>
 
-        <Dialog v-model:open="dialogOpen">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{{ editing ? `Edit ${editing.name}` : 'New user' }}</DialogTitle>
-                    <DialogDescription>Set the account details and assign roles.</DialogDescription>
-                </DialogHeader>
+            <Dialog v-model:open="dialogOpen">
+                <DialogContent class="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{{ editing ? `Edit ${editing.name}` : 'New user' }}</DialogTitle>
+                        <DialogDescription>Set the account details and assign roles.</DialogDescription>
+                    </DialogHeader>
 
-                <form class="space-y-4" @submit.prevent="save">
-                    <div class="space-y-2">
-                        <Label for="user-name">Name</Label>
-                        <Input id="user-name" v-model="form.name" placeholder="Full name" />
-                        <p v-if="fieldErrors.name" class="text-xs text-destructive">{{ fieldErrors.name[0] }}</p>
-                    </div>
-
-                    <div class="space-y-2">
-                        <Label for="user-email">Email</Label>
-                        <Input id="user-email" v-model="form.email" type="email" placeholder="name@example.com" />
-                        <p v-if="fieldErrors.email" class="text-xs text-destructive">{{ fieldErrors.email[0] }}</p>
-                    </div>
-
-                    <div class="space-y-2">
-                        <Label for="user-password">{{ editing ? 'New password (optional)' : 'Password' }}</Label>
-                        <Input id="user-password" v-model="form.password" type="password" placeholder="At least 8 characters" />
-                        <p v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password[0] }}</p>
-                    </div>
-
-                    <div class="space-y-2">
-                        <Label>Roles</Label>
-                        <div v-if="roleOptions.length > 0" class="grid gap-2 sm:grid-cols-2">
-                            <label v-for="role in roleOptions" :key="role.name" class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                                <Checkbox
-                                    :model-value="form.roles?.includes(role.name)"
-                                    @update:model-value="(checked: boolean) => {
-                                        if (!form.roles) form.roles = [];
-                                        if (checked) form.roles.push(role.name);
-                                        else form.roles = form.roles.filter((name) => name !== role.name);
-                                    }"
-                                />
-                                {{ role.label }}
-                            </label>
+                    <form class="grid grid-cols-1 gap-4 sm:grid-cols-2" @submit.prevent="save">
+                        <div class="col-span-full space-y-2">
+                            <Label for="user-school">School</Label>
+                            <Select
+                                v-if="isPlatformActor"
+                                :model-value="
+                                    form.school_profile_id === null || form.school_profile_id === undefined ? '' : String(form.school_profile_id)
+                                "
+                                @update:model-value="
+                                    (v: string) => {
+                                        form.school_profile_id = v === '' ? null : Number(v);
+                                    }
+                                "
+                            >
+                                <SelectTrigger id="user-school" class="w-full">
+                                    <SelectValue placeholder="Select school (or platform-level)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">No school (platform-level)</SelectItem>
+                                    <SelectItem v-for="school in schools" :key="school.value" :value="String(school.value)">{{
+                                        school.label
+                                    }}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div v-else class="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                                {{ auth.user?.school?.name ?? 'No school assigned' }}
+                            </div>
+                            <p v-if="fieldErrors.school_profile_id" class="text-xs text-destructive">{{ fieldErrors.school_profile_id[0] }}</p>
+                            <p class="text-xs text-muted-foreground">School-level roles must belong to a school; platform roles cannot.</p>
                         </div>
-                    </div>
 
-                    <DialogFooter>
-                        <Button type="button" variant="outline" @click="dialogOpen = false">Cancel</Button>
-                        <Button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                        <div class="space-y-2">
+                            <Label for="user-name">Name</Label>
+                            <Input id="user-name" v-model="form.name" placeholder="Full name" />
+                            <p v-if="fieldErrors.name" class="text-xs text-destructive">{{ fieldErrors.name[0] }}</p>
+                        </div>
 
-        <Dialog v-model:open="resetDialogOpen">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Reset password</DialogTitle>
-                    <DialogDescription>Set a new password for {{ editing?.name }}.</DialogDescription>
-                </DialogHeader>
-                <form class="space-y-4" @submit.prevent="confirmReset">
-                    <div class="space-y-2">
-                        <Label for="reset-password">New password</Label>
-                        <Input id="reset-password" v-model="resetPasswordValue" type="password" placeholder="At least 8 characters" />
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" @click="resetDialogOpen = false">Cancel</Button>
-                        <Button type="submit">Reset</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                        <div class="space-y-2">
+                            <Label for="user-email">Email</Label>
+                            <Input id="user-email" v-model="form.email" type="email" placeholder="name@example.com" />
+                            <p v-if="fieldErrors.email" class="text-xs text-destructive">{{ fieldErrors.email[0] }}</p>
+                        </div>
+
+                        <div class="col-span-full space-y-2">
+                            <Label for="user-password">{{ editing ? 'New password (optional)' : 'Password' }}</Label>
+                            <Input id="user-password" v-model="form.password" type="password" placeholder="At least 8 characters" />
+                            <p v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password[0] }}</p>
+                        </div>
+
+                        <div class="col-span-full space-y-2">
+                            <Label>Roles</Label>
+                            <div v-if="roleOptions.length > 0" class="grid gap-2 sm:grid-cols-2">
+                                <label
+                                    v-for="role in roleOptions"
+                                    :key="role.name"
+                                    class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                                >
+                                    <Checkbox
+                                        :model-value="form.roles?.includes(role.name)"
+                                        @update:model-value="
+                                            (checked: boolean) => {
+                                                if (!form.roles) form.roles = [];
+                                                if (checked) form.roles.push(role.name);
+                                                else form.roles = form.roles.filter((name) => name !== role.name);
+                                            }
+                                        "
+                                    />
+                                    {{ role.label }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <DialogFooter class="col-span-full">
+                            <Button type="button" variant="outline" @click="dialogOpen = false">Cancel</Button>
+                            <Button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog v-model:open="resetDialogOpen">
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reset password</DialogTitle>
+                        <DialogDescription>Set a new password for {{ editing?.name }}.</DialogDescription>
+                    </DialogHeader>
+                    <form class="grid grid-cols-1 gap-4 sm:grid-cols-2" @submit.prevent="confirmReset">
+                        <div class="col-span-full space-y-2">
+                            <Label for="reset-password">New password</Label>
+                            <Input id="reset-password" v-model="resetPasswordValue" type="password" placeholder="At least 8 characters" />
+                        </div>
+                        <DialogFooter class="col-span-full">
+                            <Button type="button" variant="outline" @click="resetDialogOpen = false">Cancel</Button>
+                            <Button type="submit">Reset</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     </div>
 </template>

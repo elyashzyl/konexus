@@ -37,15 +37,15 @@ class AuthController extends ApiController
     }
 
     /**
-     * Register a new user account.
+     * Register a new school and its administrator account.
      */
     public function register(RegisterRequest $request): JsonResponse
     {
-        $result = $this->authService->register($request->validated());
+        $result = $this->authService->registerSchool($request->validated());
 
         return $this->success(
             new AuthResource($result),
-            'Account created successfully.',
+            'School registered successfully.',
             201,
         );
     }
@@ -55,7 +55,7 @@ class AuthController extends ApiController
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load('roles:id,name,label,description,guard_name');
+        $user = $request->user()->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']);
 
         return $this->success(
             new UserResource($user),

@@ -10,13 +10,23 @@ import { registerSchema, type RegisterFormValues } from '@/schemas/auth';
 import { useAuthStore } from '@/stores/auth';
 import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 const router = useRouter();
 const auth = useAuthStore();
 
 const form = ref<RegisterFormValues>({
+    school_name: '',
+    short_name: '',
+    school_id: '',
+    region: '',
+    division: '',
+    district: '',
+    address: '',
+    contact_number: '',
+    school_email: '',
+    website: '',
     name: '',
     email: '',
     password: '',
@@ -40,7 +50,7 @@ const submit = async () => {
 
     try {
         await auth.register(parsed.data);
-        toast.success('Account created successfully.');
+        toast.success('School registered successfully.');
         await router.push(APP_ROUTES.dashboard.path);
     } catch (error) {
         toast.error(extractError(error));
@@ -54,55 +64,174 @@ const submit = async () => {
 <template>
     <form @submit.prevent="submit" class="flex flex-col gap-6">
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="name">Name</Label>
-                <Input id="name" type="text" required autofocus tabindex="1" autocomplete="name" v-model="form.name" placeholder="Full name" />
-                <InputError :message="errors.name" />
+            <div class="grid gap-3">
+                <p class="text-sm font-medium text-muted-foreground">School details</p>
+
+                <div class="grid gap-2">
+                    <Label for="school_name">School name</Label>
+                    <Input
+                        id="school_name"
+                        type="text"
+                        required
+                        tabindex="1"
+                        autocomplete="organization"
+                        v-model="form.school_name"
+                        placeholder="e.g. Baguio Patriotic High School"
+                        class="h-9 px-2.5 py-1.5"
+                    />
+                    <InputError :message="errors.school_name" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="grid gap-2">
+                        <Label for="short_name">Short name</Label>
+                        <Input id="short_name" type="text" tabindex="2" v-model="form.short_name" placeholder="e.g. BPHS" class="h-9 px-2.5 py-1.5" />
+                        <InputError :message="errors.short_name" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="school_id">School ID</Label>
+                        <Input
+                            id="school_id"
+                            type="text"
+                            tabindex="3"
+                            v-model="form.school_id"
+                            placeholder="DepEd / LIS ID"
+                            class="h-9 px-2.5 py-1.5"
+                        />
+                        <InputError :message="errors.school_id" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="grid gap-2">
+                        <Label for="region">Region</Label>
+                        <Input id="region" type="text" tabindex="4" v-model="form.region" placeholder="Region" class="h-9 px-2.5 py-1.5" />
+                        <InputError :message="errors.region" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="division">Division</Label>
+                        <Input id="division" type="text" tabindex="5" v-model="form.division" placeholder="Division" class="h-9 px-2.5 py-1.5" />
+                        <InputError :message="errors.division" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="district">District</Label>
+                        <Input id="district" type="text" tabindex="6" v-model="form.district" placeholder="District" class="h-9 px-2.5 py-1.5" />
+                        <InputError :message="errors.district" />
+                    </div>
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="address">Address</Label>
+                    <Input id="address" type="text" tabindex="7" v-model="form.address" placeholder="School address" class="h-9 px-2.5 py-1.5" />
+                    <InputError :message="errors.address" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="grid gap-2">
+                        <Label for="contact_number">Contact number</Label>
+                        <Input
+                            id="contact_number"
+                            type="text"
+                            tabindex="8"
+                            v-model="form.contact_number"
+                            placeholder="+63 900 000 0000"
+                            class="h-9 px-2.5 py-1.5"
+                        />
+                        <InputError :message="errors.contact_number" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="school_email">School email</Label>
+                        <Input
+                            id="school_email"
+                            type="email"
+                            tabindex="9"
+                            v-model="form.school_email"
+                            placeholder="school@example.com"
+                            class="h-9 px-2.5 py-1.5"
+                        />
+                        <InputError :message="errors.school_email" />
+                    </div>
+                </div>
             </div>
 
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input id="email" type="email" required tabindex="2" autocomplete="email" v-model="form.email" placeholder="email@example.com" />
-                <InputError :message="errors.email" />
+            <div class="grid gap-3">
+                <p class="text-sm font-medium text-muted-foreground">Administrator account</p>
+
+                <div class="grid gap-2">
+                    <Label for="name">Administrator name</Label>
+                    <Input
+                        id="name"
+                        type="text"
+                        required
+                        tabindex="10"
+                        autocomplete="name"
+                        v-model="form.name"
+                        placeholder="Full name"
+                        class="h-9 px-2.5 py-1.5"
+                    />
+                    <InputError :message="errors.name" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="email">Email address</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        required
+                        tabindex="11"
+                        autocomplete="email"
+                        v-model="form.email"
+                        placeholder="email@example.com"
+                        class="h-9 px-2.5 py-1.5"
+                    />
+                    <InputError :message="errors.email" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        tabindex="12"
+                        autocomplete="new-password"
+                        v-model="form.password"
+                        placeholder="At least 8 characters"
+                        class="h-9 px-2.5 py-1.5"
+                    />
+                    <InputError :message="errors.password" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="password_confirmation">Confirm password</Label>
+                    <Input
+                        id="password_confirmation"
+                        type="password"
+                        required
+                        tabindex="13"
+                        autocomplete="new-password"
+                        v-model="form.password_confirmation"
+                        placeholder="Confirm password"
+                        class="h-9 px-2.5 py-1.5"
+                    />
+                    <InputError :message="errors.password_confirmation" />
+                </div>
             </div>
 
-            <div class="grid gap-2">
-                <Label for="password">Password</Label>
-                <Input
-                    id="password"
-                    type="password"
-                    required
-                    tabindex="3"
-                    autocomplete="new-password"
-                    v-model="form.password"
-                    placeholder="Password"
-                />
-                <InputError :message="errors.password" />
+            <div class="mt-2 grid grid-cols-2 gap-3">
+                <Button type="submit" class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]" tabindex="14" :disabled="processing">
+                    <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
+                    Register school
+                </Button>
+                <Button type="button" class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)]" tabindex="15" as-child>
+                    <RouterLink :to="APP_ROUTES.landing.path">Landing Page</RouterLink>
+                </Button>
             </div>
-
-            <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm password</Label>
-                <Input
-                    id="password_confirmation"
-                    type="password"
-                    required
-                    tabindex="4"
-                    autocomplete="new-password"
-                    v-model="form.password_confirmation"
-                    placeholder="Confirm password"
-                />
-                <InputError :message="errors.password_confirmation" />
-            </div>
-
-            <Button type="submit" class="mt-2 w-full" tabindex="5" :disabled="processing">
-                <LoaderCircle v-if="processing" class="h-4 w-4 animate-spin" />
-                Create account
-            </Button>
         </div>
 
         <div class="text-center text-sm text-muted-foreground">
-            Already have an account?
-            <TextLink :href="AUTH_ROUTES.login.path" class="underline underline-offset-4" :tabindex="6">Log in</TextLink>
+            Already registered your school?
+            <TextLink :href="AUTH_ROUTES.login.path" class="underline underline-offset-4" :tabindex="16">Log in</TextLink>
         </div>
     </form>
 </template>

@@ -21,15 +21,21 @@ use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EnrollmentController;
 use App\Http\Controllers\Api\V1\EnrollmentDocumentController;
 use App\Http\Controllers\Api\V1\EnrollmentRequirementController;
+use App\Http\Controllers\Api\V1\AuditController;
+use App\Http\Controllers\Api\V1\FeatureController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\GradeCorrectionController;
 use App\Http\Controllers\Api\V1\GradeRecordController;
 use App\Http\Controllers\Api\V1\GradeScaleController;
 use App\Http\Controllers\Api\V1\GradeLevelController;
 use App\Http\Controllers\Api\V1\GuardianController;
+use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\LicenseController;
 use App\Http\Controllers\Api\V1\MasterDataController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ParentController;
+use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PlatformDashboardController;
 use App\Http\Controllers\Api\V1\Portal\ParentPortalController;
 use App\Http\Controllers\Api\V1\Portal\StudentPortalController;
 use App\Http\Controllers\Api\V1\Portal\TeacherPortalController;
@@ -38,16 +44,22 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\RoomController;
 use App\Http\Controllers\Api\V1\SchoolCalendarEventController;
 use App\Http\Controllers\Api\V1\SchoolProfileController;
+use App\Http\Controllers\Api\V1\SchoolSubscriptionController;
 use App\Http\Controllers\Api\V1\SectionController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\SubjectOfferingController;
+use App\Http\Controllers\Api\V1\SubscriptionController;
+use App\Http\Controllers\Api\V1\SubscriptionPlanController;
+use App\Http\Controllers\Api\V1\SubscriptionSettingController;
 use App\Http\Controllers\Api\V1\SystemHealthController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\SystemSettingsGroupController;
 use App\Http\Controllers\Api\V1\TeacherAssignmentController;
 use App\Http\Controllers\Api\V1\TeacherController;
+use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\UsageController;
 use App\Http\Controllers\Api\V1\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -127,6 +139,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     // ─────────────────────────────────────────
     // Lightweight catalog used to populate public dropdowns (e.g. registration role picker).
     Route::get('roles/catalog', [RoleController::class, 'catalog'])->name('roles.catalog');
+
+    // Public marketing catalog of active subscription plans (landing page).
+    Route::get('public/plans', [SubscriptionPlanController::class, 'publicCatalog'])->name('public-plans');
 
     // ─────────────────────────────────────────
     // Phase 2 core modules
@@ -451,5 +466,70 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
                 Route::get('{id}/download', [BackupController::class, 'download'])->name('download');
                 Route::delete('{id}', [BackupController::class, 'destroy'])->name('destroy');
             });
+
+        // ─────────────────────────────────────────
+        // Part 10 – Platform Subscription & License Management
+        // ─────────────────────────────────────────
+        Route::prefix('platform')->name('platform.')
+            ->middleware('roles:super-administrator,platform-administrator')
+            ->group(function () use ($crudRoutes): void {
+                Route::get('dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
+
+                // Feature catalog (registered before tenant feature lookups).
+                Route::get('features/catalog', [FeatureController::class, 'catalog'])->name('features.catalog');
+
+                // Tenants.
+                $crudRoutes('tenants', 'tenants', TenantController::class);
+                Route::post('tenants/{id}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
+                Route::post('tenants/{id}/resume', [TenantController::class, 'resume'])->name('tenants.resume');
+
+                // Subscription plans (literal option routes before `{id}`).
+                Route::get('plans/options', [SubscriptionPlanController::class, 'options'])->name('plans.options');
+                $crudRoutes('plans', 'plans', SubscriptionPlanController::class);
+
+                // Subscriptions (provision registered before `{id}`).
+                Route::post('subscriptions/provision', [SubscriptionController::class, 'provision'])->name('subscriptions.provision');
+                Route::post('subscriptions/manual-grant', [SubscriptionController::class, 'grant'])->name('subscriptions.manual-grant');
+                $crudRoutes('subscriptions', 'subscriptions', SubscriptionController::class);
+                Route::post('subscriptions/{id}/renew', [SubscriptionController::class, 'renew'])->name('subscriptions.renew');
+                Route::post('subscriptions/{id}/suspend', [SubscriptionController::class, 'suspend'])->name('subscriptions.suspend');
+                Route::post('subscriptions/{id}/resume', [SubscriptionController::class, 'resume'])->name('subscriptions.resume');
+                Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+                Route::post('subscriptions/{id}/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
+                Route::post('subscriptions/{id}/features', [SubscriptionController::class, 'toggleFeature'])->name('subscriptions.toggle-feature');
+                Route::get('subscriptions/{id}/history', [SubscriptionController::class, 'history'])->name('subscriptions.history');
+                Route::get('subscriptions/{id}/features', [FeatureController::class, 'subscription'])->name('subscriptions.features');
+
+                // Billing (invoice generation before `{id}`).
+                Route::post('invoices/generate', [InvoiceController::class, 'generate'])->name('invoices.generate');
+                $crudRoutes('invoices', 'invoices', InvoiceController::class);
+                Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
+                $crudRoutes('payments', 'payments', PaymentController::class);
+
+                // Licenses.
+                $crudRoutes('licenses', 'licenses', LicenseController::class);
+                Route::post('licenses/{id}/regenerate', [LicenseController::class, 'regenerate'])->name('licenses.regenerate');
+                Route::post('licenses/{id}/revoke', [LicenseController::class, 'revoke'])->name('licenses.revoke');
+
+                // Usage & feature access.
+                Route::get('usage', [UsageController::class, 'index'])->name('usage.index');
+                Route::get('usage/tenants/{tenantId}', [UsageController::class, 'tenant'])->name('usage.tenant');
+                Route::post('usage/tenants/{tenantId}/snapshot', [UsageController::class, 'snapshot'])->name('usage.snapshot');
+                Route::get('features/tenants/{tenantId}', [FeatureController::class, 'tenant'])->name('features.tenant');
+
+                // Audit trail (literal actions route before `{id}`).
+                Route::get('audit', [AuditController::class, 'index'])->name('audit.index');
+                Route::get('audit/actions', [AuditController::class, 'actions'])->name('audit.actions');
+                Route::get('audit/{id}', [AuditController::class, 'show'])->name('audit.show');
+
+                // Settings (grouped/bulk before `{id}`).
+                Route::get('settings/grouped', [SubscriptionSettingController::class, 'grouped'])->name('settings.grouped');
+                Route::put('settings/bulk', [SubscriptionSettingController::class, 'bulk'])->name('settings.bulk');
+                $crudRoutes('settings', 'settings', SubscriptionSettingController::class);
+            });
+
+        // Read-only subscription summary for the current user's school.
+        Route::get('subscription/mine', [SchoolSubscriptionController::class, 'mine'])
+            ->name('subscription.mine');
     });
 });

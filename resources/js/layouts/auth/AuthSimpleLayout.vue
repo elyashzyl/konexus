@@ -10,22 +10,39 @@ defineProps<{
 </script>
 
 <template>
-    <div class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-        <div class="w-full max-w-sm">
-            <div class="flex flex-col gap-8">
-                <div class="flex flex-col items-center gap-4">
-                    <RouterLink :to="APP_ROUTES.dashboard.path" class="flex flex-col items-center gap-2 font-medium">
-                        <div class="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                            <AppLogoIcon class="size-9 fill-current text-[var(--foreground)] dark:text-white" />
-                        </div>
+    <div class="relative flex min-h-svh flex-col items-center overflow-x-clip overflow-y-auto bg-background px-5 py-8 sm:px-8">
+        <div
+            class="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(60rem_26rem_at_50%_-30%,hsl(26_57%_40%/0.12),transparent)]"
+        />
+
+        <div class="portal-rise relative my-auto w-full max-w-lg">
+            <div class="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60">
+                <div
+                    class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent"
+                />
+
+                <div class="flex flex-col items-center gap-2 pt-5">
+                    <RouterLink :to="APP_ROUTES.dashboard.path" class="flex flex-col items-center gap-2 self-center font-medium">
+                        <AppLogoIcon class="size-20 rounded-xl" />
+                        <span
+                            class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)] bg-clip-text font-display text-3xl font-semibold tracking-[-0.01em] text-transparent"
+                        >
+                            KONEXUS
+                        </span>
                         <span class="sr-only">{{ title }}</span>
                     </RouterLink>
-                    <div class="space-y-2 text-center">
-                        <h1 class="text-xl font-medium">{{ title }}</h1>
-                        <p class="text-center text-sm text-muted-foreground">{{ description }}</p>
-                    </div>
                 </div>
-                <slot />
+
+                <div class="editorial-rule mx-6 mt-5 h-px" />
+
+                <div class="space-y-2.5 px-6 pt-5 sm:px-8">
+                    <h1 class="font-display text-xl font-medium tracking-[-0.02em] text-foreground">{{ title }}</h1>
+                    <p class="text-sm leading-6 text-muted-foreground">{{ description }}</p>
+                </div>
+
+                <div class="px-6 pt-6 pb-8 sm:px-8">
+                    <slot />
+                </div>
             </div>
         </div>
     </div>

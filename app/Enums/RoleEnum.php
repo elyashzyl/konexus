@@ -10,6 +10,7 @@ namespace App\Enums;
 enum RoleEnum: string
 {
     case SUPER_ADMINISTRATOR = 'super-administrator';
+    case PLATFORM_ADMINISTRATOR = 'platform-administrator';
     case SCHOOL_ADMINISTRATOR = 'school-administrator';
     case PRINCIPAL = 'principal';
     case REGISTRAR = 'registrar';
@@ -31,6 +32,7 @@ enum RoleEnum: string
     {
         return match ($this) {
             self::SUPER_ADMINISTRATOR => 'Super Administrator',
+            self::PLATFORM_ADMINISTRATOR => 'Platform Administrator',
             self::SCHOOL_ADMINISTRATOR => 'School Administrator',
             self::PRINCIPAL => 'Principal',
             self::REGISTRAR => 'Registrar',
@@ -54,6 +56,7 @@ enum RoleEnum: string
     {
         return match ($this) {
             self::SUPER_ADMINISTRATOR => 'Full system access. Manages modules, users, permissions and platform configuration.',
+            self::PLATFORM_ADMINISTRATOR => 'Platform-level management of tenants, subscription plans, licenses, billing and usage.',
             self::SCHOOL_ADMINISTRATOR => 'Overall school management, operational modules and school configuration.',
             self::PRINCIPAL => 'Academic oversight, reports, faculty supervision and student monitoring.',
             self::REGISTRAR => 'Student records, enrollment, academic records, section assignment and student documents.',

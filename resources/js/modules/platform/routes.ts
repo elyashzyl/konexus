@@ -35,7 +35,10 @@ export const portalRoutes: RouteRecordRaw[] = [
                 path: 'enrollments',
                 name: 'portal.student.enrollments',
                 component: () => import('@/pages/portal/student/Enrollments.vue'),
-                meta: { title: 'Enrollment History', breadcrumbs: [{ title: 'Student Portal', href: '/portal/student' }, { title: 'Enrollment History' }] },
+                meta: {
+                    title: 'Enrollment History',
+                    breadcrumbs: [{ title: 'Student Portal', href: '/portal/student' }, { title: 'Enrollment History' }],
+                },
             },
             {
                 path: 'documents',
@@ -84,7 +87,10 @@ export const portalRoutes: RouteRecordRaw[] = [
                 path: 'children/:id/enrollments',
                 name: 'portal.parent.child.enrollments',
                 component: () => import('@/pages/portal/parent/child/Enrollments.vue'),
-                meta: { title: 'Enrollment History', breadcrumbs: [{ title: 'Parent Portal', href: '/portal/parent' }, { title: 'Enrollment History' }] },
+                meta: {
+                    title: 'Enrollment History',
+                    breadcrumbs: [{ title: 'Parent Portal', href: '/portal/parent' }, { title: 'Enrollment History' }],
+                },
             },
             {
                 path: 'children/:id/documents',
@@ -192,5 +198,35 @@ export const platformRoutes: RouteRecordRaw[] = [
         name: 'platform.admin.maintenance',
         component: () => import('@/pages/admin/Maintenance.vue'),
         meta: { title: 'Maintenance', breadcrumbs: [{ title: 'Maintenance', href: '/admin/maintenance' }] },
+    },
+    {
+        path: '/admin/subscription',
+        name: 'platform.admin.subscription.overview',
+        component: () => import('@/pages/admin/subscription/Overview.vue'),
+        meta: { title: 'Subscription Overview', breadcrumbs: [{ title: 'Subscription Overview', href: '/admin/subscription' }] },
+    },
+    {
+        path: '/admin/subscription/tenants',
+        name: 'platform.admin.subscription.tenants',
+        component: () => import('@/pages/admin/subscription/Tenants.vue'),
+        meta: { title: 'Tenants', breadcrumbs: [{ title: 'Subscription', href: '/admin/subscription' }, { title: 'Tenants' }] },
+    },
+    {
+        path: '/admin/subscription/plans',
+        name: 'platform.admin.subscription.plans',
+        component: () => import('@/pages/admin/subscription/Plans.vue'),
+        meta: { title: 'Plans', breadcrumbs: [{ title: 'Subscription', href: '/admin/subscription' }, { title: 'Plans' }] },
+    },
+    {
+        path: '/admin/subscription/subscriptions',
+        name: 'platform.admin.subscription.subscriptions',
+        component: () => import('@/pages/admin/subscription/Subscriptions.vue'),
+        meta: { title: 'Subscriptions', breadcrumbs: [{ title: 'Subscription', href: '/admin/subscription' }, { title: 'Subscriptions' }] },
+    },
+    {
+        path: '/admin/subscription/billing',
+        name: 'platform.admin.subscription.billing',
+        component: () => import('@/pages/admin/subscription/Billing.vue'),
+        meta: { title: 'Billing', breadcrumbs: [{ title: 'Subscription', href: '/admin/subscription' }, { title: 'Billing' }] },
     },
 ];

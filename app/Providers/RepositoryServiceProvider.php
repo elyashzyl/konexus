@@ -27,6 +27,17 @@ use App\Repositories\Contracts\GradeCorrectionRepositoryInterface;
 use App\Repositories\Contracts\GradeLevelRepositoryInterface;
 use App\Repositories\Contracts\GradeRecordRepositoryInterface;
 use App\Repositories\Contracts\GradeScaleEntryRepositoryInterface;
+use App\Repositories\Contracts\LicenseRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionFeatureRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionHistoryRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionInvoiceRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionPaymentRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionPlanFeatureRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionPlanRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionSettingRepositoryInterface;
+use App\Repositories\Contracts\SubscriptionUsageRepositoryInterface;
+use App\Repositories\Contracts\TenantRepositoryInterface;
 use App\Repositories\Contracts\GradeScaleRepositoryInterface;
 use App\Repositories\Contracts\GuardianRepositoryInterface;
 use App\Repositories\Contracts\EnrollmentCapacityOverrideRepositoryInterface;
@@ -67,6 +78,7 @@ use App\Repositories\GradeRecordRepository;
 use App\Repositories\GradeScaleEntryRepository;
 use App\Repositories\GradeScaleRepository;
 use App\Repositories\GuardianRepository;
+use App\Repositories\LicenseRepository;
 use App\Repositories\MasterDataRepository;
 use App\Repositories\ParentRepository;
 use App\Repositories\RoomRepository;
@@ -78,9 +90,19 @@ use App\Repositories\StudentDocumentRepository;
 use App\Repositories\StudentRepository;
 use App\Repositories\SubjectOfferingRepository;
 use App\Repositories\SubjectRepository;
+use App\Repositories\SubscriptionFeatureRepository;
+use App\Repositories\SubscriptionHistoryRepository;
+use App\Repositories\SubscriptionInvoiceRepository;
+use App\Repositories\SubscriptionPaymentRepository;
+use App\Repositories\SubscriptionPlanFeatureRepository;
+use App\Repositories\SubscriptionPlanRepository;
+use App\Repositories\SubscriptionRepository;
+use App\Repositories\SubscriptionSettingRepository;
+use App\Repositories\SubscriptionUsageRepository;
 use App\Repositories\SystemSettingRepository;
 use App\Repositories\TeacherAssignmentRepository;
 use App\Repositories\TeacherRepository;
+use App\Repositories\TenantRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -139,6 +161,19 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(GradeRecordRepositoryInterface::class, GradeRecordRepository::class);
         $this->app->bind(GradeCorrectionRepositoryInterface::class, GradeCorrectionRepository::class);
         $this->app->bind(AcademicSettingRepositoryInterface::class, AcademicSettingRepository::class);
+
+        // Part 10 – Platform Subscription & License Management repositories
+        $this->app->bind(TenantRepositoryInterface::class, TenantRepository::class);
+        $this->app->bind(SubscriptionPlanRepositoryInterface::class, SubscriptionPlanRepository::class);
+        $this->app->bind(SubscriptionPlanFeatureRepositoryInterface::class, SubscriptionPlanFeatureRepository::class);
+        $this->app->bind(SubscriptionRepositoryInterface::class, SubscriptionRepository::class);
+        $this->app->bind(SubscriptionFeatureRepositoryInterface::class, SubscriptionFeatureRepository::class);
+        $this->app->bind(SubscriptionInvoiceRepositoryInterface::class, SubscriptionInvoiceRepository::class);
+        $this->app->bind(SubscriptionPaymentRepositoryInterface::class, SubscriptionPaymentRepository::class);
+        $this->app->bind(LicenseRepositoryInterface::class, LicenseRepository::class);
+        $this->app->bind(SubscriptionUsageRepositoryInterface::class, SubscriptionUsageRepository::class);
+        $this->app->bind(SubscriptionHistoryRepositoryInterface::class, SubscriptionHistoryRepository::class);
+        $this->app->bind(SubscriptionSettingRepositoryInterface::class, SubscriptionSettingRepository::class);
     }
 
     /**

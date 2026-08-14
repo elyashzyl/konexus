@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\RoleEnum;
 use App\Exceptions\ApiException;
 use App\Http\Resources\AuthResource;
 use App\Http\Resources\UserResource;
@@ -22,6 +23,13 @@ use Illuminate\Validation\Rule;
 class UserManagementController extends ApiController
 {
     use AuthorizesRequests;
+
+    /**
+     * Roles that operate at the platform level and never belong to a school.
+     *
+     * @var list<string>
+     */
+    private const PLATFORM_ROLES = ['super-administrator', 'platform-administrator'];
 
     public function __construct(
         private readonly UserManagementService $service,
@@ -61,7 +69,7 @@ class UserManagementController extends ApiController
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $user = User::query()->with(['roles', 'permissions'])->findOrFail($id);
+        $user = User::query()->with(['roles', 'permissions', 'schoolProfile:id,name,short_name'])->findOrFail($id);
 
         $this->authorize('view', $user);
 
@@ -70,19 +78,31 @@ class UserManagementController extends ApiController
 
     /**
      * Create a user account.
+     *
+     * Every school-level user must be assigned to a school at creation.
+     * Platform-level roles (super/platform administrator) cannot belong to a
+     * school, and email uniqueness is scoped per school.
      */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', User::class);
 
+        $roles = $request->input('roles', []);
+        $schoolProfileId = $this->effectiveSchoolId($request->user(), $request->input('school_profile_id'), $roles);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'email' => ['required', 'email', 'max:255', $this->schoolScopedEmailRule($schoolProfileId)],
             'password' => ['required', 'string', 'min:8', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['string', 'exists:roles,name'],
+            'school_profile_id' => ['nullable', 'integer', 'exists:school_profiles,id'],
         ]);
+
+        $this->assertSchoolAssignment($roles, $schoolProfileId);
+
+        $validated['school_profile_id'] = $schoolProfileId;
 
         return $this->success(
             UserResource::make($this->service->create($validated))->resolve(),
@@ -100,14 +120,22 @@ class UserManagementController extends ApiController
 
         $this->authorize('update', $user);
 
+        $roles = $request->has('roles') ? $request->input('roles') : $user->roles()->pluck('name')->all();
+        $schoolProfileId = $this->effectiveSchoolId($request->user(), $request->input('school_profile_id', $user->school_profile_id), $roles);
+
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['sometimes', 'email', 'max:255', $this->schoolScopedEmailRule($schoolProfileId, $user->id)],
             'password' => ['sometimes', 'string', 'min:8', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['string', 'exists:roles,name'],
+            'school_profile_id' => ['nullable', 'integer', 'exists:school_profiles,id'],
         ]);
+
+        $this->assertSchoolAssignment($roles, $schoolProfileId);
+
+        $validated['school_profile_id'] = $schoolProfileId;
 
         return $this->success(
             UserResource::make($this->service->update($user, $validated))->resolve(),
@@ -128,6 +156,8 @@ class UserManagementController extends ApiController
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', 'exists:roles,name'],
         ]);
+
+        $this->assertSchoolAssignment($validated['roles'], $user->school_profile_id);
 
         return $this->success(
             UserResource::make($this->service->syncRoles($user, $validated['roles']))->resolve(),
@@ -248,5 +278,55 @@ class UserManagementController extends ApiController
         }
 
         return $this->success(null, 'Impersonation stopped.');
+    }
+
+    /**
+     * The school the user should actually be assigned to.
+     *
+     * School administrators are always confined to their own school; platform
+     * administrators may pick any school for school-level accounts or none for
+     * platform-level accounts.
+     */
+    private function effectiveSchoolId(User $actor, mixed $requestedSchoolId, array $roles): ?int
+    {
+        if ($actor->hasRole(RoleEnum::SCHOOL_ADMINISTRATOR->roleName())) {
+            return $actor->school_profile_id;
+        }
+
+        return $requestedSchoolId !== null ? (int) $requestedSchoolId : null;
+    }
+
+    /**
+     * Email uniqueness scoped to the school (null = platform-level users).
+     */
+    private function schoolScopedEmailRule(?int $schoolProfileId, ?int $ignoreId = null): \Illuminate\Validation\Rules\Unique
+    {
+        return Rule::unique('users', 'email')
+            ->ignore($ignoreId)
+            ->where(fn ($query) => $schoolProfileId === null
+                ? $query->whereNull('school_profile_id')
+                : $query->where('school_profile_id', $schoolProfileId));
+    }
+
+    /**
+     * Assert a user's school assignment is consistent with its roles.
+     */
+    private function assertSchoolAssignment(array $roles, ?int $schoolProfileId): void
+    {
+        $platformOnly = $roles !== [] && collect($roles)->every(
+            fn (string $role) => in_array($role, self::PLATFORM_ROLES, true),
+        );
+
+        if (! $platformOnly && $schoolProfileId === null) {
+            throw ApiException::unprocessable('A school is required when assigning school-level roles.', [
+                'school_profile_id' => ['A school is required when assigning school-level roles.'],
+            ]);
+        }
+
+        if ($platformOnly && $schoolProfileId !== null) {
+            throw ApiException::unprocessable('Platform-level roles cannot be assigned to a school.', [
+                'school_profile_id' => ['Platform-level roles cannot be assigned to a school.'],
+            ]);
+        }
     }
 }

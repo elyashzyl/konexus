@@ -18,10 +18,15 @@ export const platformApi = {
                 .then((r) => r.data.data),
         update: (matrix: NotificationPreferenceMatrix) =>
             api
-                .put<{ data: { categories: string[]; channels: string[]; matrix: NotificationPreferenceMatrix } }>('/notification-preferences', { matrix })
+                .put<{
+                    data: { categories: string[]; channels: string[]; matrix: NotificationPreferenceMatrix };
+                }>('/notification-preferences', { matrix })
                 .then((r) => r.data.data),
     },
-    search: (q: string) => api.get<{ data: { term: string; total: number; groups: Record<string, SearchGroupItem[]> } }>('/search', { params: { q } }).then((r) => r.data.data),
+    search: (q: string) =>
+        api
+            .get<{ data: { term: string; total: number; groups: Record<string, SearchGroupItem[]> } }>('/search', { params: { q } })
+            .then((r) => r.data.data),
     announcements: {
         mine: () => api.get<{ data: import('@/types/platform').AnnouncementItem[] }>('/announcements/mine').then((r) => r.data.data),
     },
@@ -29,7 +34,12 @@ export const platformApi = {
         index: (params: { page?: number; per_page?: number; log_name?: string; search?: string }) =>
             api.get<{ data: Paginated<ActivityLogEntry> }>('/activity-logs', { params }).then((r) => r.data.data),
         show: (id: number) => api.get<{ data: ActivityLogEntry }>(`/activity-logs/${id}`).then((r) => r.data.data),
-        stats: () => api.get<{ data: { total: number; today: number; unique_causers: number; log_names: { log_name: string; total: number }[] } }>('/activity-logs/stats').then((r) => r.data.data),
+        stats: () =>
+            api
+                .get<{
+                    data: { total: number; today: number; unique_causers: number; log_names: { log_name: string; total: number }[] };
+                }>('/activity-logs/stats')
+                .then((r) => r.data.data),
     },
     admin: {
         dashboard: () => api.get<{ data: AdminDashboardSnapshot }>('/admin/dashboard').then((r) => r.data.data),
@@ -42,35 +52,34 @@ export const platformApi = {
         update: (id: number, payload: Partial<UserInput>) => api.put<{ data: AdminUser }>(`/users/${id}`, payload).then((r) => r.data.data),
         syncRoles: (id: number, roles: string[]) => api.put<{ data: AdminUser }>(`/users/${id}/roles`, { roles }).then((r) => r.data.data),
         toggleActive: (id: number) => api.patch<{ data: AdminUser }>(`/users/${id}/toggle-active`).then((r) => r.data.data),
-        resetPassword: (id: number, password: string) => api.post<{ data: null }>(`/users/${id}/reset-password`, { password }).then((r) => r.data.data),
+        resetPassword: (id: number, password: string) =>
+            api.post<{ data: null }>(`/users/${id}/reset-password`, { password }).then((r) => r.data.data),
         destroy: (id: number) => api.delete<{ data: null }>(`/users/${id}`).then((r) => r.data.data),
         roleOptions: () => api.get<{ data: { items: { name: string; label: string }[] } }>('/users/role-options').then((r) => r.data.data.items),
     },
     settings: {
         index: () => api.get<{ data: { groups: SettingsGroup[] } }>('/system-settings/grouped').then((r) => r.data.data.groups),
-        update: (settings: Record<string, string>) => api.put<{ data: { updated: Record<string, string> } }>('/system-settings/grouped', { settings }).then((r) => r.data.data),
+        update: (settings: Record<string, string>) =>
+            api.put<{ data: { updated: Record<string, string> } }>('/system-settings/grouped', { settings }).then((r) => r.data.data),
     },
     reports: {
         catalog: () => api.get<{ data: { items: ReportDescriptor[]; context: ReportContext } }>('/reports').then((r) => r.data.data),
         download: (payload: { report: string; format: 'csv' | 'pdf'; academic_year_id?: number; academic_term_id?: number; section_id?: number }) =>
-            api
-                .post<Blob>('/reports/generate', payload, { responseType: 'blob' })
-                .then((r) => {
-                    const disposition = r.headers['content-disposition'] as string | undefined;
-                    return { blob: r.data, filename: filenameFromDisposition(disposition) };
-                }),
+            api.post<Blob>('/reports/generate', payload, { responseType: 'blob' }).then((r) => {
+                const disposition = r.headers['content-disposition'] as string | undefined;
+                return { blob: r.data, filename: filenameFromDisposition(disposition) };
+            }),
     },
     backups: {
         index: (params: { page?: number; per_page?: number }) =>
             api.get<{ data: Paginated<BackupItem> }>('/backups', { params }).then((r) => r.data.data),
-        create: (payload: { type?: 'manual' | 'scheduled'; notes?: string }) => api.post<{ data: BackupItem }>('/backups', payload).then((r) => r.data.data),
+        create: (payload: { type?: 'manual' | 'scheduled'; notes?: string }) =>
+            api.post<{ data: BackupItem }>('/backups', payload).then((r) => r.data.data),
         download: (id: number) =>
-            api
-                .get<Blob>(`/backups/${id}/download`, { responseType: 'blob' })
-                .then((r) => {
-                    const disposition = r.headers['content-disposition'] as string | undefined;
-                    return { blob: r.data, filename: filenameFromDisposition(disposition) };
-                }),
+            api.get<Blob>(`/backups/${id}/download`, { responseType: 'blob' }).then((r) => {
+                const disposition = r.headers['content-disposition'] as string | undefined;
+                return { blob: r.data, filename: filenameFromDisposition(disposition) };
+            }),
         destroy: (id: number) => api.delete<{ data: null }>(`/backups/${id}`).then((r) => r.data.data),
     },
     health: () => api.get<{ data: SystemHealth }>('/system-health').then((r) => r.data.data),
@@ -99,6 +108,8 @@ export interface AdminUser {
     avatar: string | null;
     email_verified_at: string | null;
     is_active: boolean;
+    school_profile_id: number | null;
+    school: { id: number; name: string; short_name: string | null } | null;
     last_login_at: string | null;
     roles: { id: number; name: string; label: string; description: string | null }[];
     permissions: unknown[];
@@ -112,6 +123,7 @@ export interface UserInput {
     password?: string;
     is_active?: boolean;
     roles?: string[];
+    school_profile_id?: number | null;
 }
 
 export interface SettingsGroup {
