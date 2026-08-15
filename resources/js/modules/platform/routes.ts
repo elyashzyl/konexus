@@ -26,6 +26,12 @@ export const portalRoutes: RouteRecordRaw[] = [
                 meta: { title: 'Grades', breadcrumbs: [{ title: 'Student Portal', href: '/portal/student' }, { title: 'Grades' }] },
             },
             {
+                path: 'attendance',
+                name: 'portal.student.attendance',
+                component: () => import('@/pages/portal/student/Attendance.vue'),
+                meta: { title: 'Attendance', breadcrumbs: [{ title: 'Student Portal', href: '/portal/student' }, { title: 'Attendance' }] },
+            },
+            {
                 path: 'schedule',
                 name: 'portal.student.schedule',
                 component: () => import('@/pages/portal/student/Schedule.vue'),
@@ -116,6 +122,12 @@ export const portalRoutes: RouteRecordRaw[] = [
                 name: 'portal.staff.announcements',
                 component: () => import('@/pages/portal/staff/Announcements.vue'),
                 meta: { title: 'Announcements', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'Announcements' }] },
+            },
+            {
+                path: 'enrollment-operations',
+                name: 'portal.staff.registrar.enrollment-operations',
+                component: () => import('@/pages/portal/staff/RegistrarEnrollmentOperations.vue'),
+                meta: { title: 'Enrollment Operations', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'Enrollment Operations' }] },
             },
         ],
     },

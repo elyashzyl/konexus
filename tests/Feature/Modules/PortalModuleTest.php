@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Modules;
 
+use App\Enums\EnrollmentStatus;
 use App\Enums\RoleEnum;
+use App\Events\EnrollmentStatusChanged;
 use App\Models\Employee;
+use App\Models\Enrollment;
 use App\Models\ParentGuardian;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -71,6 +74,11 @@ class PortalModuleTest extends TestCase
             ->getJson('/api/v1/portal/student/grades')
             ->assertOk()
             ->assertJsonStructure(['data' => ['records', 'general_average']]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/portal/student/attendance')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['summary']]);
     }
 
     // ─────────────────────────────────────────
@@ -144,16 +152,16 @@ class PortalModuleTest extends TestCase
         $parent = ParentGuardian::factory()->create(['user_id' => $parentUser->id]);
         $parent->students()->attach($student);
 
-        $enrollment = \App\Models\Enrollment::factory()->create([
+        $enrollment = Enrollment::factory()->create([
             'student_id' => $student->id,
-            'status' => \App\Enums\EnrollmentStatus::DRAFT->value,
+            'status' => EnrollmentStatus::DRAFT->value,
             'enrollment_number' => 'ENR-2026-0001',
         ]);
 
-        $enrollment->status = \App\Enums\EnrollmentStatus::FOR_VERIFICATION->value;
+        $enrollment->status = EnrollmentStatus::FOR_VERIFICATION->value;
         $enrollment->save();
 
-        \App\Events\EnrollmentStatusChanged::dispatch($enrollment, \App\Enums\EnrollmentStatus::DRAFT->value);
+        EnrollmentStatusChanged::dispatch($enrollment, EnrollmentStatus::DRAFT->value);
 
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $studentUser->id]);
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $parentUser->id]);

@@ -1,13 +1,15 @@
 <?php
 
-use App\Http\Controllers\Api\V1\AcademicDashboardController;
 use App\Http\Controllers\Api\V1\AcademicClassController;
+use App\Http\Controllers\Api\V1\AcademicDashboardController;
+use App\Http\Controllers\Api\V1\AcademicOperationsController;
 use App\Http\Controllers\Api\V1\AcademicSettingController;
 use App\Http\Controllers\Api\V1\AcademicTermController;
 use App\Http\Controllers\Api\V1\AcademicYearController;
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AdminDashboardController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
+use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
@@ -15,6 +17,7 @@ use App\Http\Controllers\Api\V1\Auth\SocialAuthController;
 use App\Http\Controllers\Api\V1\BackupController;
 use App\Http\Controllers\Api\V1\BuildingController;
 use App\Http\Controllers\Api\V1\CampusController;
+use App\Http\Controllers\Api\V1\CampusWorkspaceController;
 use App\Http\Controllers\Api\V1\ClassScheduleController;
 use App\Http\Controllers\Api\V1\CurriculumEntryController;
 use App\Http\Controllers\Api\V1\DepartmentController;
@@ -22,13 +25,12 @@ use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EnrollmentController;
 use App\Http\Controllers\Api\V1\EnrollmentDocumentController;
 use App\Http\Controllers\Api\V1\EnrollmentRequirementController;
-use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\FeatureController;
 use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\GradeCorrectionController;
+use App\Http\Controllers\Api\V1\GradeLevelController;
 use App\Http\Controllers\Api\V1\GradeRecordController;
 use App\Http\Controllers\Api\V1\GradeScaleController;
-use App\Http\Controllers\Api\V1\GradeLevelController;
 use App\Http\Controllers\Api\V1\GuardianController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\LicenseController;
@@ -190,8 +192,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     // ─────────────────────────────────────────
     // Phase 2 core modules
     // ─────────────────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () use ($crudRoutes, $peopleRoutes): void {
+    Route::middleware(['auth:sanctum', 'campus.workspace'])->group(function () use ($crudRoutes, $peopleRoutes): void {
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+
+        Route::get('workspaces', [CampusWorkspaceController::class, 'index'])->name('workspaces.index');
+        Route::put('workspaces/active', [CampusWorkspaceController::class, 'select'])->name('workspaces.active');
 
         // Grouped system settings. Registered before the settings CRUD so the
         // `grouped` segment is never swallowed by the `{id}` route.
@@ -301,10 +306,44 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
         // ─────────────────────────────────────────
         // Part 6 – Academic Management
         // ─────────────────────────────────────────
+        Route::prefix('academic-operations')->name('academic-operations.')->group(function (): void {
+            Route::get('programs', [AcademicOperationsController::class, 'programs'])->name('programs.index');
+            Route::post('programs', [AcademicOperationsController::class, 'storeProgram'])
+                ->middleware('roles:super-administrator,school-administrator,principal,registrar')
+                ->name('programs.store');
+            Route::post('programs/{program}/periods', [AcademicOperationsController::class, 'storePeriod'])
+                ->middleware('roles:super-administrator,school-administrator,principal,registrar')
+                ->name('periods.store');
+            Route::post('enrollments/{enrollment}/materialize', [AcademicOperationsController::class, 'materializeEnrollment'])
+                ->middleware('roles:super-administrator,school-administrator,principal,registrar')
+                ->name('enrollments.materialize');
+            Route::post('attendance-sessions', [AcademicOperationsController::class, 'storeAttendanceSession'])
+                ->middleware('roles:super-administrator,school-administrator,principal,adviser,teacher')
+                ->name('attendance-sessions.store');
+            Route::put('attendance-sessions/{attendanceSession}/records', [AcademicOperationsController::class, 'recordAttendance'])
+                ->middleware('roles:super-administrator,school-administrator,principal,adviser,teacher')
+                ->name('attendance-sessions.records');
+            Route::post('attendance-sessions/{attendanceSession}/submit', [AcademicOperationsController::class, 'submitAttendance'])
+                ->middleware('roles:super-administrator,school-administrator,principal,adviser,teacher')
+                ->name('attendance-sessions.submit');
+            Route::post('assessments', [AcademicOperationsController::class, 'storeAssessment'])
+                ->middleware('roles:super-administrator,school-administrator,principal,teacher')
+                ->name('assessments.store');
+            Route::put('assessments/{assessment}/scores', [AcademicOperationsController::class, 'recordScores'])
+                ->middleware('roles:super-administrator,school-administrator,principal,teacher')
+                ->name('assessments.scores');
+            Route::post('enrollments/{enrollment}/promotion', [AcademicOperationsController::class, 'decidePromotion'])
+                ->middleware('roles:super-administrator,school-administrator,principal,registrar')
+                ->name('promotions.decide');
+            Route::get('enrollments/{enrollment}/report-card', [AcademicOperationsController::class, 'reportCard'])
+                ->middleware('roles:super-administrator,school-administrator,principal,registrar,adviser,teacher')
+                ->name('reports.report-card');
+        });
+
         $crudRoutes('curriculum', 'curriculum', CurriculumEntryController::class);
         $crudRoutes('subject-offerings', 'subject-offerings', SubjectOfferingController::class);
 
-        Route::prefix('teacher-assignments')->name('teacher-assignments.')->group(function () use ($crudRoutes): void {
+        Route::prefix('teacher-assignments')->name('teacher-assignments.')->group(function (): void {
             Route::get('load', [TeacherAssignmentController::class, 'load'])->name('load');
             Route::get('/', [TeacherAssignmentController::class, 'index'])->name('index');
             Route::post('/', [TeacherAssignmentController::class, 'store'])->name('store');
@@ -319,7 +358,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
         Route::get('academic-settings/grouped', [AcademicSettingController::class, 'grouped'])->name('academic-settings.grouped');
         $crudRoutes('academic-settings', 'academic-settings', AcademicSettingController::class);
 
-        Route::prefix('academic-classes')->name('academic-classes.')->group(function () use ($crudRoutes): void {
+        Route::prefix('academic-classes')->name('academic-classes.')->group(function (): void {
             Route::get('/', [AcademicClassController::class, 'index'])->name('index');
             Route::post('/', [AcademicClassController::class, 'store'])->name('store');
             Route::get('/{id}', [AcademicClassController::class, 'show'])->name('show');
@@ -432,6 +471,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
                 Route::get('children/{id}', [ParentPortalController::class, 'child'])->name('child');
                 Route::get('children/{id}/schedule', [ParentPortalController::class, 'childSchedule'])->name('child.schedule');
                 Route::get('children/{id}/grades', [ParentPortalController::class, 'childGrades'])->name('child.grades');
+                Route::get('children/{id}/attendance', [ParentPortalController::class, 'childAttendance'])->name('child.attendance');
                 Route::get('children/{id}/enrollments', [ParentPortalController::class, 'childEnrollments'])->name('child.enrollments');
                 Route::get('children/{id}/documents', [ParentPortalController::class, 'childDocuments'])->name('child.documents');
             });
@@ -441,6 +481,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
                 Route::get('profile', [StudentPortalController::class, 'profile'])->name('profile');
                 Route::get('schedule', [StudentPortalController::class, 'schedule'])->name('schedule');
                 Route::get('grades', [StudentPortalController::class, 'grades'])->name('grades');
+                Route::get('attendance', [StudentPortalController::class, 'attendance'])->name('attendance');
                 Route::get('enrollments', [StudentPortalController::class, 'enrollments'])->name('enrollments');
                 Route::get('documents', [StudentPortalController::class, 'documents'])->name('documents');
             });

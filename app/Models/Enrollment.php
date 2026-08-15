@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\RequirementItemStatus;
 use Database\Factories\EnrollmentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,7 @@ class Enrollment extends Model
     protected $fillable = [
         'student_id',
         'academic_year_id',
+        'curriculum_program_id',
         'academic_term_id',
         'campus_id',
         'grade_level_id',
@@ -33,6 +35,8 @@ class Enrollment extends Model
         'department',
         'strand',
         'track',
+        'program_cluster',
+        'elective_selections',
         'incoming_level',
         'email',
         'mobile_number',
@@ -94,6 +98,7 @@ class Enrollment extends Model
             'application_submitted_at' => 'datetime',
             'application_expires_at' => 'datetime',
             'siblings' => 'array',
+            'elective_selections' => 'array',
             'medical_history' => 'array',
             'chinese_details' => 'array',
             'photo_consent' => 'boolean',
@@ -118,6 +123,11 @@ class Enrollment extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function curriculumProgram(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProgram::class);
     }
 
     public function academicTerm(): BelongsTo
@@ -219,7 +229,7 @@ class Enrollment extends Model
 
         return $required->every(fn (EnrollmentRequirementItem $item) => in_array(
             $item->status,
-            \App\Enums\RequirementItemStatus::satisfiedStatuses(),
+            RequirementItemStatus::satisfiedStatuses(),
             true
         ));
     }

@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+import { academicRoutes } from './academic/routes';
 import { foundationRoutes } from './foundation/routes';
 import { portalRoutes as platformPortalRoutes, platformRoutes } from './platform/routes';
 
@@ -10,6 +11,6 @@ import { portalRoutes as platformPortalRoutes, platformRoutes } from './platform
  * routes are nested under the authenticated `AppLayout` shell, while portal
  * routes render inside their own `PortalLayout` (top-level).
  */
-export const moduleRoutes: RouteRecordRaw[] = [...foundationRoutes, ...platformRoutes];
+export const moduleRoutes: RouteRecordRaw[] = [...foundationRoutes, ...academicRoutes, ...platformRoutes];
 
 export const portalRoutes: RouteRecordRaw[] = platformPortalRoutes;

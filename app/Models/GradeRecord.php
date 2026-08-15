@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -26,6 +27,8 @@ class GradeRecord extends Model
         'student_id',
         'academic_year_id',
         'academic_term_id',
+        'academic_period_id',
+        'student_subject_enrollment_id',
         'grade_level_id',
         'section_id',
         'subject_id',
@@ -75,6 +78,16 @@ class GradeRecord extends Model
         return $this->belongsTo(AcademicTerm::class);
     }
 
+    public function academicPeriod(): BelongsTo
+    {
+        return $this->belongsTo(AcademicPeriod::class);
+    }
+
+    public function studentSubjectEnrollment(): BelongsTo
+    {
+        return $this->belongsTo(StudentSubjectEnrollment::class);
+    }
+
     public function gradeLevel(): BelongsTo
     {
         return $this->belongsTo(GradeLevel::class);
@@ -111,9 +124,9 @@ class GradeRecord extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<GradeCorrection, $this>
+     * @return HasMany<GradeCorrection, $this>
      */
-    public function corrections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function corrections(): HasMany
     {
         return $this->hasMany(GradeCorrection::class);
     }

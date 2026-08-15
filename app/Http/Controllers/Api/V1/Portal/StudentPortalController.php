@@ -88,6 +88,13 @@ class StudentPortalController extends ApiController
         return $this->success($this->data->academicSummary($student), 'Grades retrieved.');
     }
 
+    public function attendance(Request $request): JsonResponse
+    {
+        $student = $this->identities->student($request->user());
+
+        return $this->success(['summary' => $student ? $this->data->attendanceSummary($student) : []], 'Attendance retrieved.');
+    }
+
     /**
      * The enrollment history of the logged-in student.
      */

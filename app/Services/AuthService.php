@@ -51,7 +51,7 @@ class AuthService
 
         return [
             'token' => $token->plainTextToken,
-            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name', 'activeCampus:id,name,code']),
         ];
     }
 
@@ -74,7 +74,7 @@ class AuthService
 
         return [
             'token' => $token->plainTextToken,
-            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name', 'activeCampus:id,name,code']),
         ];
     }
 
@@ -123,7 +123,7 @@ class AuthService
 
         return [
             'token' => $token->plainTextToken,
-            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']),
+            'user' => $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name', 'activeCampus:id,name,code']),
         ];
     }
 
@@ -218,7 +218,7 @@ class AuthService
             'email' => $attributes['email'],
         ])->save();
 
-        return $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']);
+        return $user->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name', 'activeCampus:id,name,code']);
     }
 
     /**

@@ -25,10 +25,23 @@ export interface User {
     is_active: boolean;
     school_profile_id: number | null;
     school: { id: number; name: string; short_name: string | null } | null;
+    active_campus_id: number | null;
+    active_campus: { id: number; name: string; code: string | null } | null;
     last_login_at: string | null;
     roles: Role[];
     created_at: string;
     updated_at: string;
+}
+
+export interface CampusWorkspace {
+    id: number;
+    school_profile_id: number;
+    school_profile: { id: number; name: string } | null;
+    name: string;
+    code: string | null;
+    address: string | null;
+    contact_number: string | null;
+    is_active: boolean;
 }
 
 export interface AuthPayload {
@@ -75,4 +88,5 @@ export interface RouteMetaType {
     breadcrumbs?: BreadcrumbItem[];
     requiresAuth?: boolean;
     requiresGuest?: boolean;
+    requiresAcademicOffice?: boolean;
 }

@@ -3,7 +3,7 @@
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\EnsureUserHasRole;
-use App\Listeners\SubscriptionEventNotifier;
+use App\Http\Middleware\ResolveCampusWorkspace;
 use App\Providers\RateLimitServiceProvider;
 use App\Providers\RepositoryServiceProvider;
 use App\Support\ApiResponse;
@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Part 10 – subscription feature gating
             'feature' => EnsureFeatureAccess::class,
+            'campus.workspace' => ResolveCampusWorkspace::class,
 
             // Spatie Laravel Permission middleware
             'role' => RoleMiddleware::class,

@@ -24,10 +24,16 @@ class UserResource extends JsonResource
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'is_active' => $this->is_active,
             'school_profile_id' => $this->school_profile_id,
+            'active_campus_id' => $this->active_campus_id,
             'school' => $this->whenLoaded('schoolProfile', fn () => $this->schoolProfile ? [
                 'id' => $this->schoolProfile->id,
                 'name' => $this->schoolProfile->name,
                 'short_name' => $this->schoolProfile->short_name,
+            ] : null),
+            'active_campus' => $this->whenLoaded('activeCampus', fn () => $this->activeCampus ? [
+                'id' => $this->activeCampus->id,
+                'name' => $this->activeCampus->name,
+                'code' => $this->activeCampus->code,
             ] : null),
             'last_login_at' => $this->last_login_at?->toISOString(),
             'roles' => RoleResource::collection($this->whenLoaded('roles')),

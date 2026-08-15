@@ -55,7 +55,7 @@ class AuthController extends ApiController
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name']);
+        $user = $request->user()->load(['roles:id,name,label,description,guard_name', 'schoolProfile:id,name,short_name', 'activeCampus:id,name,code']);
 
         return $this->success(
             new UserResource($user),

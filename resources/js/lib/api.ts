@@ -3,6 +3,7 @@ import axios, { AxiosError } from 'axios';
 
 export const TOKEN_STORAGE_KEY = 'konexus_token';
 export const ORIGINAL_TOKEN_STORAGE_KEY = 'konexus_original_token';
+export const CAMPUS_WORKSPACE_STORAGE_KEY = 'konexus_active_campus';
 
 export function getStoredToken(): string | null {
     return localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -28,6 +29,21 @@ export function storeOriginalToken(token: string | null): void {
     }
 }
 
+export function getStoredCampusId(): number | null {
+    const value = localStorage.getItem(CAMPUS_WORKSPACE_STORAGE_KEY);
+    const campusId = value ? Number(value) : NaN;
+
+    return Number.isInteger(campusId) && campusId > 0 ? campusId : null;
+}
+
+export function storeCampusId(campusId: number | null): void {
+    if (campusId) {
+        localStorage.setItem(CAMPUS_WORKSPACE_STORAGE_KEY, String(campusId));
+    } else {
+        localStorage.removeItem(CAMPUS_WORKSPACE_STORAGE_KEY);
+    }
+}
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '/api/v1',
     headers: {
@@ -41,6 +57,11 @@ api.interceptors.request.use((config) => {
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const campusId = getStoredCampusId();
+    if (campusId) {
+        config.headers['X-Campus-Id'] = String(campusId);
     }
 
     return config;

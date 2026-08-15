@@ -1,4 +1,4 @@
-import api, { extractError, getOriginalToken, getStoredToken, setUnauthorizedHandler, storeOriginalToken, storeToken } from '@/lib/api';
+import api, { extractError, getOriginalToken, getStoredToken, setUnauthorizedHandler, storeCampusId, storeOriginalToken, storeToken } from '@/lib/api';
 import type { AuthPayload, Role, Session, User } from '@/types';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -70,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
             const response = await api.post<{ data: AuthPayload }>('/auth/login', payload);
             token.value = response.data.data.token;
             user.value = response.data.data.user;
+            storeCampusId(response.data.data.user.active_campus_id);
             storeToken(token.value);
             status.value = 'authenticated';
 
@@ -87,6 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
             const response = await api.post<{ data: AuthPayload }>('/auth/register', payload);
             token.value = response.data.data.token;
             user.value = response.data.data.user;
+            storeCampusId(response.data.data.user.active_campus_id);
             storeToken(token.value);
             status.value = 'authenticated';
 
@@ -128,6 +130,7 @@ export const useAuthStore = defineStore('auth', () => {
         status.value = 'unauthenticated';
         storeToken(null);
         storeOriginalToken(null);
+        storeCampusId(null);
     }
 
     async function initialize(): Promise<void> {
@@ -163,6 +166,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         token.value = data.token;
         user.value = data.user;
+        storeCampusId(data.user.active_campus_id);
         storeToken(token.value);
         status.value = 'authenticated';
 

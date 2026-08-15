@@ -26,6 +26,7 @@ class SubjectOfferingRequest extends FormRequest
 
         return [
             'academic_year_id' => ['required', 'integer', 'exists:academic_years,id'],
+            'curriculum_program_id' => ['nullable', 'integer', 'exists:curriculum_programs,id'],
             'academic_term_id' => ['nullable', 'integer', 'exists:academic_terms,id'],
             'campus_id' => ['nullable', 'integer', 'exists:campuses,id'],
             'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
@@ -35,6 +36,7 @@ class SubjectOfferingRequest extends FormRequest
                 ->where('academic_term_id', $this->input('academic_term_id'))
                 ->where('campus_id', $this->input('campus_id'))
                 ->where('section_id', $this->input('section_id')))->withoutTrashed()->ignore($ignore)],
+            'curriculum_entry_id' => ['nullable', 'integer', 'exists:curriculum_entries,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'room_id' => ['nullable', 'integer', 'exists:rooms,id'],

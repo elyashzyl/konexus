@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EnrollmentStatus;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -132,6 +133,16 @@ class Student extends Model
         return $this->hasMany(Enrollment::class)->orderByDesc('academic_year_id');
     }
 
+    public function subjectEnrollments(): HasMany
+    {
+        return $this->hasMany(StudentSubjectEnrollment::class);
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class);
+    }
+
     /**
      * The most recent enrollment of the student.
      *
@@ -150,7 +161,7 @@ class Student extends Model
     public function activeEnrollment(): HasOne
     {
         return $this->hasOne(Enrollment::class)
-            ->whereIn('status', \App\Enums\EnrollmentStatus::activeStatuses())
+            ->whereIn('status', EnrollmentStatus::activeStatuses())
             ->latestOfMany();
     }
 

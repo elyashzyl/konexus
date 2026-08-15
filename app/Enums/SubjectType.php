@@ -15,6 +15,8 @@ enum SubjectType: string
     case APPLIED = 'applied';
     case SPECIALIZED = 'specialized';
     case ELECTIVE = 'elective';
+    case ACADEMIC_ELECTIVE = 'academic-elective';
+    case TECHPRO_ELECTIVE = 'techpro-elective';
     case OTHER = 'other';
 
     /**
@@ -27,6 +29,8 @@ enum SubjectType: string
             self::APPLIED => 'Applied',
             self::SPECIALIZED => 'Specialized',
             self::ELECTIVE => 'Elective',
+            self::ACADEMIC_ELECTIVE => 'Academic Elective',
+            self::TECHPRO_ELECTIVE => 'Technical-Professional Elective',
             self::OTHER => 'Other',
         };
     }

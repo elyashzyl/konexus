@@ -10,8 +10,10 @@ use App\Exceptions\ApiException;
 use App\Models\AcademicTerm;
 use App\Models\AcademicYear;
 use App\Models\Campus;
+use App\Models\CurriculumProgram;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
+use App\Models\MasterData;
 use App\Models\Section;
 use App\Models\Student;
 use App\Repositories\Contracts\EnrollmentCapacityOverrideRepositoryInterface;
@@ -25,6 +27,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -87,6 +90,7 @@ class EnrollmentService extends CrudService
         private readonly EnrollmentRequirementRepositoryInterface $requirementRepo,
         private readonly EnrollmentTransferRepositoryInterface $transferRepo,
         private readonly EnrollmentCapacityOverrideRepositoryInterface $capacityRepo,
+        private readonly AcademicOperationsService $academicOperations,
     ) {}
 
     /**
@@ -123,7 +127,7 @@ class EnrollmentService extends CrudService
      */
     protected function masterDataOptions(string $type, array $defaults): array
     {
-        $entries = \App\Models\MasterData::query()
+        $entries = MasterData::query()
             ->where('type', $type)
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -164,7 +168,7 @@ class EnrollmentService extends CrudService
         $data['status'] = EnrollmentStatus::DRAFT->value;
         $data['is_active'] = true;
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $overrideReason): Model {
+        return DB::transaction(function () use ($data, $overrideReason): Model {
             $enrollment = $this->repo->create($data);
 
             $this->syncRequirements($enrollment);
@@ -196,7 +200,7 @@ class EnrollmentService extends CrudService
 
         $this->assertAssignmentValid($data, $model);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($model, $data, $overrideReason): Model {
+        return DB::transaction(function () use ($model, $data, $overrideReason): Model {
             $updated = $this->repo->update($model, $data);
 
             $this->syncRequirements($updated);
@@ -382,12 +386,16 @@ class EnrollmentService extends CrudService
 
         $this->syncSectionCapacity($enrollment, $capacityOverrideReason);
 
-        return $this->saveTransition($enrollment, [
+        $completed = $this->saveTransition($enrollment, [
             'status' => EnrollmentStatus::OFFICIALLY_ENROLLED->value,
             'date_enrolled' => $date ?: now()->toDateString(),
             'approved_by' => $enrollment->approved_by ?: auth()->id(),
             'approved_at' => $enrollment->approved_at ?: now(),
         ]);
+
+        $this->academicOperations->materializeEnrollment($completed);
+
+        return $completed;
     }
 
     /**
@@ -611,6 +619,19 @@ class EnrollmentService extends CrudService
         $gradeLevel = GradeLevel::query()->findOrFail($data['grade_level_id']);
         if (! $gradeLevel->is_active) {
             throw ApiException::unprocessable('The selected Grade Level is inactive.');
+        }
+
+        if (! empty($data['curriculum_program_id'])) {
+            $program = CurriculumProgram::query()->findOrFail($data['curriculum_program_id']);
+            if ((int) $program->academic_year_id !== (int) $data['academic_year_id'] || ! $program->includesGradeLevel((int) $data['grade_level_id'])) {
+                throw ApiException::unprocessable('The selected curriculum program does not apply to this enrollment.');
+            }
+            if (! empty($program->clusters) && blank($data['program_cluster'] ?? null)) {
+                throw ApiException::unprocessable('A curriculum program cluster is required for this enrollment.');
+            }
+            if (! empty($data['program_cluster']) && ! in_array($data['program_cluster'], $program->clusters ?? [], true)) {
+                throw ApiException::unprocessable('The selected program cluster is not available in the curriculum program.');
+            }
         }
 
         if (! empty($data['academic_term_id'])) {

@@ -33,9 +33,17 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         description: 'Enrollment records, documents and academic history.',
         intro: 'Your registrar workspace anchors the records office — enrollments, private documents, and the school calendar that structures every term.',
         modules: [
-            { key: 'enrollments', title: 'Enrollments', description: 'Enrollment history and academic records.' },
-            { key: 'documents', title: 'Private documents', description: 'Issued and archived student documents.' },
-            { key: 'calendar', title: 'School calendar', description: 'Holidays, examinations and school events.' },
+            {
+                key: 'enrollment-operations',
+                title: 'Enrollment operations',
+                description: 'Work applications through requirements, approval, and official enrollment.',
+            },
+            {
+                key: 'online-enrollment',
+                title: 'Public enrollment journey',
+                description: 'Open the guided online application families use before office review.',
+            },
+            { key: 'announcements', title: 'Announcements', description: 'Publish the notices applicants and families need.' },
         ],
     },
     {

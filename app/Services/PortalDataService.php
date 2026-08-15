@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Enums\EnrollmentStatus;
-use App\Enums\GradeStatus;
+use App\Models\AcademicClassStudent;
 use App\Models\Announcement;
+use App\Models\AttendanceRecord;
 use App\Models\ClassSchedule;
 use App\Models\Enrollment;
 use App\Models\Student;
@@ -61,6 +61,7 @@ class PortalDataService
             'campus' => $enrollment?->campus?->name,
             'adviser' => $this->adviserName($student),
             'academic_summary' => $this->academicSummary($student),
+            'attendance_summary' => $this->attendanceSummary($student),
             'modules' => $this->moduleAvailability(),
         ];
     }
@@ -73,7 +74,7 @@ class PortalDataService
     public function moduleAvailability(): array
     {
         return [
-            'attendance' => false,
+            'attendance' => true,
             'finance' => false,
             'library' => false,
             'clinic' => false,
@@ -87,7 +88,7 @@ class PortalDataService
     {
         $yearId = $this->context->currentAcademicYear()?->id;
 
-        $membership = \App\Models\AcademicClassStudent::query()
+        $membership = AcademicClassStudent::query()
             ->with('academicClass.adviser.employee')
             ->where('student_id', $student->id)
             ->where('is_active', true)
@@ -115,6 +116,18 @@ class PortalDataService
             'published_records' => $report['published_records'],
             'general_average' => $report['general_average'],
         ];
+    }
+
+    /** @return array<string, int> */
+    public function attendanceSummary(Student $student): array
+    {
+        return AttendanceRecord::query()
+            ->where('student_id', $student->id)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn (int $total): int => $total)
+            ->all();
     }
 
     /**

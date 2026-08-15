@@ -5,7 +5,7 @@ namespace Tests\Feature\Modules;
 use App\Enums\RoleEnum;
 use App\Models\AcademicYear;
 use App\Models\Campus;
-use App\Models\Enrollment;
+use App\Models\EnrollmentDocument;
 use App\Models\EnrollmentRequirement;
 use App\Models\GradeLevel;
 use App\Models\Section;
@@ -32,6 +32,14 @@ class EnrollmentModulesTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole(RoleEnum::SUPER_ADMINISTRATOR->roleName());
+
+        return $user;
+    }
+
+    private function registrar(): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(RoleEnum::REGISTRAR->roleName());
 
         return $user;
     }
@@ -67,8 +75,6 @@ class EnrollmentModulesTest extends TestCase
         ], $override);
     }
 
-    
-
     public function test_enrollment_endpoints_require_authentication(): void
     {
         $this->getJson('/api/v1/enrollments')->assertStatus(401);
@@ -91,6 +97,31 @@ class EnrollmentModulesTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/enrollment-requirements')
             ->assertStatus(403);
+    }
+
+    public function test_registrar_can_run_the_enrollment_review_and_completion_workflow(): void
+    {
+        $this->actingAs($this->registrar(), 'sanctum');
+
+        EnrollmentRequirement::factory()->create(['applicable_grade_levels' => null, 'applicable_enrollment_types' => null]);
+
+        $student = Student::factory()->create();
+        $created = $this->postJson('/api/v1/enrollments', $this->payload($student))
+            ->assertCreated()
+            ->json('data');
+
+        $id = $created['id'];
+        $requirementId = $created['requirements'][0]['id'];
+
+        $this->getJson('/api/v1/enrollments')->assertOk();
+        $this->getJson('/api/v1/enrollments/statistics')->assertOk();
+        $this->patchJson("/api/v1/enrollments/{$id}/requirements/{$requirementId}", ['status' => 'verified'])->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/submit")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/verify")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/approve")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/complete")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'officially-enrolled');
     }
 
     public function test_create_enrollment_generates_numbers_and_syncs_requirements(): void
@@ -353,7 +384,7 @@ class EnrollmentModulesTest extends TestCase
 
         $this->assertNotNull($docId);
 
-        $document = \App\Models\EnrollmentDocument::findOrFail($docId);
+        $document = EnrollmentDocument::findOrFail($docId);
 
         Storage::disk('local')->assertExists($document->file_path);
 

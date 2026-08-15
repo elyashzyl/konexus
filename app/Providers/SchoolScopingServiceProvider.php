@@ -4,14 +4,21 @@ namespace App\Providers;
 
 use App\Enums\RoleEnum;
 use App\Models\AcademicClass;
+use App\Models\AcademicClassStudent;
+use App\Models\AcademicPeriod;
 use App\Models\AcademicSetting;
 use App\Models\AcademicTerm;
 use App\Models\AcademicYear;
 use App\Models\Announcement;
+use App\Models\AssessmentItem;
+use App\Models\AssessmentScore;
+use App\Models\AttendanceRecord;
+use App\Models\AttendanceSession;
 use App\Models\Building;
 use App\Models\Campus;
 use App\Models\ClassSchedule;
 use App\Models\CurriculumEntry;
+use App\Models\CurriculumProgram;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Enrollment;
@@ -29,14 +36,17 @@ use App\Models\GradeScaleEntry;
 use App\Models\Guardian;
 use App\Models\MasterData;
 use App\Models\ParentGuardian;
+use App\Models\PromotionDecision;
 use App\Models\Room;
 use App\Models\SchoolCalendarEvent;
 use App\Models\SchoolProfile;
+use App\Models\Scopes\CampusScope;
 use App\Models\Scopes\SchoolScope;
 use App\Models\Section;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\StudentDocument;
+use App\Models\StudentSubjectEnrollment;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
 use App\Models\SystemSetting;
@@ -45,6 +55,7 @@ use App\Models\TeacherAssignment;
 use App\Models\Tenant;
 use App\Models\Tuition;
 use App\Models\User;
+use App\Support\CampusContext;
 use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
@@ -72,12 +83,18 @@ class SchoolScopingServiceProvider extends ServiceProvider
         Tenant::class,
         AcademicYear::class,
         AcademicTerm::class,
+        AcademicPeriod::class,
         AcademicSetting::class,
         AcademicClass::class,
         Announcement::class,
         Building::class,
         ClassSchedule::class,
+        AssessmentItem::class,
+        AssessmentScore::class,
+        AttendanceRecord::class,
+        AttendanceSession::class,
         CurriculumEntry::class,
+        CurriculumProgram::class,
         Department::class,
         Employee::class,
         Enrollment::class,
@@ -92,6 +109,7 @@ class SchoolScopingServiceProvider extends ServiceProvider
         GradeCorrection::class,
         GradeScale::class,
         GradeScaleEntry::class,
+        PromotionDecision::class,
         Guardian::class,
         MasterData::class,
         ParentGuardian::class,
@@ -103,6 +121,7 @@ class SchoolScopingServiceProvider extends ServiceProvider
         StudentDocument::class,
         Subject::class,
         SubjectOffering::class,
+        StudentSubjectEnrollment::class,
         SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,
@@ -121,12 +140,18 @@ class SchoolScopingServiceProvider extends ServiceProvider
         Campus::class,
         AcademicYear::class,
         AcademicTerm::class,
+        AcademicPeriod::class,
         AcademicSetting::class,
         AcademicClass::class,
         Announcement::class,
         Building::class,
         ClassSchedule::class,
+        AssessmentItem::class,
+        AssessmentScore::class,
+        AttendanceRecord::class,
+        AttendanceSession::class,
         CurriculumEntry::class,
+        CurriculumProgram::class,
         Department::class,
         Employee::class,
         Enrollment::class,
@@ -141,6 +166,7 @@ class SchoolScopingServiceProvider extends ServiceProvider
         GradeCorrection::class,
         GradeScale::class,
         GradeScaleEntry::class,
+        PromotionDecision::class,
         Guardian::class,
         MasterData::class,
         ParentGuardian::class,
@@ -152,10 +178,42 @@ class SchoolScopingServiceProvider extends ServiceProvider
         StudentDocument::class,
         Subject::class,
         SubjectOffering::class,
+        StudentSubjectEnrollment::class,
         SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,
         Tuition::class,
+    ];
+
+    /**
+     * Operational records isolated by the active campus workspace.
+     *
+     * School-wide master data remains shared by the school profile while the
+     * roster, attendance, gradebook, and enrollment flows stay campus-local.
+     *
+     * @var list<class-string<Model>>
+     */
+    private const CAMPUS_SCOPED_MODELS = [
+        AcademicClass::class,
+        AcademicClassStudent::class,
+        AssessmentItem::class,
+        AssessmentScore::class,
+        AttendanceRecord::class,
+        AttendanceSession::class,
+        ClassSchedule::class,
+        CurriculumEntry::class,
+        Enrollment::class,
+        EnrollmentCapacityOverride::class,
+        EnrollmentDocument::class,
+        EnrollmentRequirementItem::class,
+        EnrollmentSignature::class,
+        EnrollmentTransfer::class,
+        GradeCorrection::class,
+        GradeRecord::class,
+        PromotionDecision::class,
+        StudentSubjectEnrollment::class,
+        SubjectOffering::class,
+        TeacherAssignment::class,
     ];
 
     /**
@@ -172,12 +230,17 @@ class SchoolScopingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         foreach (self::SCOPED_MODELS as $model) {
-            $model::addGlobalScope(new SchoolScope());
+            $model::addGlobalScope(new SchoolScope);
+        }
+
+        foreach (self::CAMPUS_SCOPED_MODELS as $model) {
+            $model::addGlobalScope(new CampusScope);
         }
 
         foreach (self::AUTO_ANCHORED_MODELS as $model) {
             $model::creating(function (Model $record): void {
                 $this->applySchoolAnchor($record);
+                $this->applyCampusAnchor($record);
             });
         }
     }
@@ -208,5 +271,19 @@ class SchoolScopingServiceProvider extends ServiceProvider
             ->where('is_active', true)
             ->orderBy('id')
             ->value('id'));
+    }
+
+    /**
+     * Anchor new campus-owned records to the selected workspace.
+     */
+    private function applyCampusAnchor(Model $record): void
+    {
+        if (! in_array($record::class, self::CAMPUS_SCOPED_MODELS, true)
+            || ! in_array('campus_id', $record->getFillable(), true)
+            || CampusContext::id() === null) {
+            return;
+        }
+
+        $record->setAttribute('campus_id', CampusContext::id());
     }
 }

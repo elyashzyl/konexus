@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\RoleEnum;
 use App\Models\User;
 
 class EnrollmentPolicy extends BasePolicy
@@ -20,14 +21,34 @@ class EnrollmentPolicy extends BasePolicy
 
     protected string $forceDeletePermission = 'enrollment.force-delete';
 
+    public function viewAny(User $user): bool
+    {
+        return $this->isRegistrar($user) || parent::viewAny($user);
+    }
+
+    public function view(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || parent::view($user, $model);
+    }
+
+    public function create(User $user): bool
+    {
+        return $this->isRegistrar($user) || parent::create($user);
+    }
+
+    public function update(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || parent::update($user, $model);
+    }
+
     public function verify(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.verify');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.verify');
     }
 
     public function approve(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.approve');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.approve');
     }
 
     public function reject(User $user, mixed $model): bool
@@ -47,7 +68,7 @@ class EnrollmentPolicy extends BasePolicy
 
     public function complete(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.complete');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.complete');
     }
 
     public function cancel(User $user, mixed $model): bool
@@ -67,41 +88,46 @@ class EnrollmentPolicy extends BasePolicy
 
     public function print(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.print');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.print');
     }
 
     public function viewRequirements(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.requirements-view');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.requirements-view');
     }
 
     public function manageRequirements(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.requirements-manage');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.requirements-manage');
     }
 
     public function viewDocuments(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.documents-view');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.documents-view');
     }
 
     public function uploadDocuments(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.documents-upload');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.documents-upload');
     }
 
     public function deleteDocuments(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.documents-delete');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.documents-delete');
     }
 
     public function viewSignatures(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.signatures-view');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.signatures-view');
     }
 
     public function sign(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.signatures-sign');
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.signatures-sign');
+    }
+
+    private function isRegistrar(User $user): bool
+    {
+        return $user->hasRole(RoleEnum::REGISTRAR->roleName());
     }
 }

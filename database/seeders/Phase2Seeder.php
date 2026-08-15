@@ -19,6 +19,7 @@ class Phase2Seeder extends Seeder
             SchoolProfileSeeder::class,
             AcademicStructureSeeder::class,
             DepartmentsAndSubjectsSeeder::class,
+            DepEdCurriculumSeeder::class,
             FacilitiesSeeder::class,
             SchoolCalendarSeeder::class,
             AnnouncementsSeeder::class,

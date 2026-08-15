@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
 import NavUser from '@/components/NavUser.vue';
+import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import {
     Sidebar,
     SidebarContent,
@@ -14,13 +15,14 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useInitials } from '@/composables/useInitials';
-import { portalApi } from '@/lib/portalApi';
-import type { ChildSummary } from '@/types/platform';
-import { useAuthStore } from '@/stores/auth';
-import { ROLE_HOME_PATHS } from '@/lib/roles';
 import { staffPortalByRole } from '@/config/staffPortals';
+import { portalApi } from '@/lib/portalApi';
+import { ROLE_HOME_PATHS } from '@/lib/roles';
+import { useAuthStore } from '@/stores/auth';
+import type { ChildSummary } from '@/types/platform';
 import {
     BookOpen,
+    CalendarCheck2,
     CalendarDays,
     ClipboardList,
     FolderLock,
@@ -28,8 +30,8 @@ import {
     LayoutGrid,
     Megaphone,
     ShieldCheck,
-    Users,
     UserRound,
+    Users,
     type LucideIcon,
 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -116,6 +118,7 @@ const studentGroups = computed<{ label: string; items: NavItem[] }[]>(() => [
         label: 'My record',
         items: [
             { title: 'Grades', href: '/portal/student/grades', icon: BookOpen },
+            { title: 'Attendance', href: '/portal/student/attendance', icon: CalendarCheck2 },
             { title: 'Weekly schedule', href: '/portal/student/schedule', icon: CalendarDays },
         ],
     },
@@ -155,15 +158,33 @@ const teacherGroups = computed<{ label: string; items: NavItem[] }[]>(() => [
     },
 ]);
 
-const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => [
-    {
-        label: staffRole.value?.eyebrow ?? 'Office',
-        items: [
-            { title: 'Overview', href: overviewHref.value, icon: LayoutGrid },
-            { title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone },
-        ],
-    },
-]);
+const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
+    if (staffRole.value?.role === 'registrar') {
+        return [
+            {
+                label: 'Admissions & records',
+                items: [
+                    { title: 'Overview', href: overviewHref.value, icon: LayoutGrid },
+                    { title: 'Enrollment operations', href: `${overviewHref.value}/enrollment-operations`, icon: ClipboardList },
+                ],
+            },
+            {
+                label: 'Communications',
+                items: [{ title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone }],
+            },
+        ];
+    }
+
+    return [
+        {
+            label: staffRole.value?.eyebrow ?? 'Office',
+            items: [
+                { title: 'Overview', href: overviewHref.value, icon: LayoutGrid },
+                { title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone },
+            ],
+        },
+    ];
+});
 
 const groups = computed(() => {
     if (props.role === 'student') return studentGroups.value;
@@ -185,8 +206,9 @@ const groups = computed(() => {
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
+            <WorkspaceSwitcher v-if="role !== 'student' || auth.can('school-administrator')" />
 
-            <div v-if="identity" class="px-2 pt-4 pb-1" :class="{ 'opacity-0': isCollapsed }">
+            <div v-if="identity" class="px-2 pb-1 pt-4" :class="{ 'opacity-0': isCollapsed }">
                 <div class="relative overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-accent/60 p-4">
                     <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
                     <div class="flex items-center gap-3">

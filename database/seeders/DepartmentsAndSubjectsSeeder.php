@@ -47,6 +47,22 @@ class DepartmentsAndSubjectsSeeder extends Seeder
     ];
 
     /**
+     * The common MATATAG learning areas for elementary grades. Schools may
+     * adjust the local curriculum catalog while retaining its version history.
+     *
+     * @var list<array{name: string, code: string, department: string}>
+     */
+    protected array $elementarySubjects = [
+        ['name' => 'English', 'code' => 'ENG', 'department' => 'ENG'],
+        ['name' => 'Filipino', 'code' => 'FIL', 'department' => 'FIL'],
+        ['name' => 'Mathematics', 'code' => 'MATH', 'department' => 'MATH'],
+        ['name' => 'Science', 'code' => 'SCI', 'department' => 'SCI'],
+        ['name' => 'Araling Panlipunan', 'code' => 'AP', 'department' => 'AP'],
+        ['name' => 'Edukasyon sa Pagpapakatao', 'code' => 'ESP', 'department' => 'ESP'],
+        ['name' => 'MAPEH', 'code' => 'MAPEH', 'department' => 'MAPEH'],
+    ];
+
+    /**
      * The senior high school subjects (offered to both SHS grade levels).
      *
      * @var list<array{name: string, code: string, department: string}>
@@ -80,6 +96,26 @@ class DepartmentsAndSubjectsSeeder extends Seeder
 
             foreach ($subjects as $subject) {
                 $this->createSubject($subject['name'], $subject['code'], $gradeLevel?->id, $departmentModels[$subject['department']] ?? null);
+            }
+        }
+
+        foreach (range(1, 6) as $gradeNumber) {
+            $gradeName = 'Grade '.$gradeNumber;
+            $gradeLevel = GradeLevel::query()->where('name', $gradeName)->first();
+
+            foreach ($this->elementarySubjects as $subject) {
+                $this->createSubject($subject['name'].' '.$gradeNumber, $subject['code'].$gradeNumber, $gradeLevel?->id, $departmentModels[$subject['department']] ?? null);
+            }
+        }
+
+        foreach (range(8, 10) as $gradeNumber) {
+            $gradeName = 'Grade '.$gradeNumber;
+            $gradeLevel = GradeLevel::query()->where('name', $gradeName)->first();
+
+            foreach ($this->juniorHighSubjects['Grade 7'] as $subject) {
+                $baseName = preg_replace('/ 7$/', '', $subject['name']);
+                $baseCode = preg_replace('/7$/', '', $subject['code']);
+                $this->createSubject($baseName.' '.$gradeNumber, $baseCode.$gradeNumber, $gradeLevel?->id, $departmentModels[$subject['department']] ?? null);
             }
         }
 

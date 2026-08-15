@@ -23,12 +23,17 @@ class CurriculumEntry extends Model
      */
     protected $fillable = [
         'academic_year_id',
+        'curriculum_program_id',
         'academic_term_id',
         'campus_id',
         'grade_level_id',
         'subject_id',
+        'prerequisite_subject_id',
         'subject_type',
         'units',
+        'weekly_minutes',
+        'eligible_clusters',
+        'assessment_policy',
         'is_required',
         'display_order',
         'status',
@@ -44,6 +49,9 @@ class CurriculumEntry extends Model
     {
         return [
             'units' => 'decimal:2',
+            'weekly_minutes' => 'integer',
+            'eligible_clusters' => 'array',
+            'assessment_policy' => 'array',
             'is_required' => 'boolean',
             'display_order' => 'integer',
             'is_active' => 'boolean',
@@ -53,6 +61,16 @@ class CurriculumEntry extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function curriculumProgram(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProgram::class);
+    }
+
+    public function prerequisiteSubject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class, 'prerequisite_subject_id');
     }
 
     public function academicTerm(): BelongsTo

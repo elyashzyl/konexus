@@ -47,6 +47,8 @@ export interface AcademicSummary {
     general_average: number | null;
 }
 
+export type AttendanceSummary = Record<'present' | 'absent' | 'late' | 'excused' | 'school-activity', number>;
+
 export interface GradeSummary {
     id: number;
     subject: string | null;

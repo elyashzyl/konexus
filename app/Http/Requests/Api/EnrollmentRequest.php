@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use App\Enums\EnrollmentType;
+use App\Models\MasterData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,10 +27,14 @@ class EnrollmentRequest extends FormRequest
         return [
             'student_id' => ['required', 'integer', 'exists:students,id'],
             'academic_year_id' => ['required', 'integer', 'exists:academic_years,id'],
+            'curriculum_program_id' => ['nullable', 'integer', 'exists:curriculum_programs,id'],
             'academic_term_id' => ['nullable', 'integer', 'exists:academic_terms,id'],
             'campus_id' => ['required', 'integer', 'exists:campuses,id'],
             'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
             'section_id' => ['nullable', 'integer', 'exists:sections,id'],
+            'program_cluster' => ['nullable', 'string', 'max:100'],
+            'elective_selections' => ['nullable', 'array'],
+            'elective_selections.*' => ['integer', 'exists:subjects,id'],
             'enrollment_type' => ['required', 'string', Rule::in($this->enrollmentTypeCodes())],
             'enrollment_date' => ['nullable', 'date'],
             'payment_status' => ['nullable', 'string', 'max:50'],
@@ -48,7 +53,7 @@ class EnrollmentRequest extends FormRequest
      */
     protected function enrollmentTypeCodes(): array
     {
-        $codes = \App\Models\MasterData::query()
+        $codes = MasterData::query()
             ->where('type', 'enrollment-type')
             ->where('is_active', true)
             ->pluck('code')

@@ -2,10 +2,11 @@ import { APP_NAME, APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { homePathForRoles, isAdmin } from '@/lib/roles';
 import { moduleRoutes, portalRoutes } from '@/modules';
 import { FOUNDATION_MODULES } from '@/modules/foundation/config';
 import { useAuthStore } from '@/stores/auth';
-import { homePathForRoles, isAdmin } from '@/lib/roles';
+import { useWorkspaceStore } from '@/stores/workspace';
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -150,6 +151,11 @@ router.beforeEach(async (to) => {
         await auth.initialize();
     }
 
+    if (auth.isAuthenticated) {
+        const workspace = useWorkspaceStore();
+        await workspace.initialize();
+    }
+
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
         return {
             name: AUTH_ROUTES.login.name,
@@ -161,12 +167,24 @@ router.beforeEach(async (to) => {
         return { path: homePathForRoles(auth.user?.roles) };
     }
 
-    if (auth.isAuthenticated && !isAdmin(auth.user?.roles) && !to.path.startsWith('/portal/') && to.path !== APP_ROUTES.enrollment.path) {
+    const registrarEnrollmentRoute = auth.can('registrar') && to.path.startsWith('/school/enrollments');
+
+    if (
+        auth.isAuthenticated &&
+        !isAdmin(auth.user?.roles) &&
+        !to.path.startsWith('/portal/') &&
+        to.path !== APP_ROUTES.enrollment.path &&
+        !registrarEnrollmentRoute
+    ) {
         const home = homePathForRoles(auth.user?.roles);
 
         if (home && to.path !== home) {
             return { path: home };
         }
+    }
+
+    if (auth.isAuthenticated && to.meta.requiresAcademicOffice && !auth.can('school-administrator') && !auth.can('super-administrator')) {
+        return { path: homePathForRoles(auth.user?.roles) };
     }
 
     if (auth.isAuthenticated && to.path.startsWith('/admin/subscription')) {

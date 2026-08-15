@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class CampusRequest extends FormRequest
 {
@@ -30,5 +31,21 @@ class CampusRequest extends FormRequest
             'contact_number' => ['nullable', 'string', 'max:50'],
             'is_active' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * Keep a school administrator from attaching a campus to another school.
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $schoolProfileId = $this->user()?->school_profile_id;
+
+            if ($schoolProfileId !== null
+                && $this->filled('school_profile_id')
+                && (int) $this->input('school_profile_id') !== (int) $schoolProfileId) {
+                $validator->errors()->add('school_profile_id', 'A campus must belong to your school profile.');
+            }
+        }];
     }
 }

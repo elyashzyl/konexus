@@ -160,8 +160,8 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
     {
         key: 'campuses',
         path: '/school/campuses',
-        title: 'Campuses',
-        description: 'Physical campuses (main, annex) belonging to the school.',
+        title: 'Campus Workspaces',
+        description: 'Campus workspaces with school profile configuration and operational data isolation.',
         resource: 'campuses',
         singularLabel: 'campus',
         icon: Building2,

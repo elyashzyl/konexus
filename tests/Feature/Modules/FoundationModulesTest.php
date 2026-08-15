@@ -243,7 +243,7 @@ class FoundationModulesTest extends TestCase
         $this->assertDatabaseHas('school_profiles', ['name' => 'Baguio Patriotic High School', 'is_active' => true]);
         $this->assertDatabaseHas('academic_years', ['name' => '2026-2027', 'is_active' => true]);
         $this->assertSame(4, AcademicYear::where('name', '2026-2027')->first()->terms()->count());
-        $this->assertSame(6, GradeLevel::count());
+        $this->assertSame(12, GradeLevel::count());
         $this->assertGreaterThan(0, Section::count());
         $this->assertGreaterThan(0, Subject::count());
         $this->assertGreaterThan(0, Campus::count());

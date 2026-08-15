@@ -93,6 +93,13 @@ class ParentPortalController extends ApiController
         return $this->success($this->data->academicSummary($student), 'Child grades retrieved.');
     }
 
+    public function childAttendance(Request $request, int $id): JsonResponse
+    {
+        $student = $this->linkedChild($request, $id);
+
+        return $this->success(['summary' => $this->data->attendanceSummary($student)], 'Child attendance retrieved.');
+    }
+
     /**
      * The enrollment history of a linked child.
      */

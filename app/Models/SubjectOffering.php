@@ -23,11 +23,13 @@ class SubjectOffering extends Model
      */
     protected $fillable = [
         'academic_year_id',
+        'curriculum_program_id',
         'academic_term_id',
         'campus_id',
         'grade_level_id',
         'section_id',
         'subject_id',
+        'curriculum_entry_id',
         'teacher_id',
         'department_id',
         'room_id',
@@ -52,6 +54,16 @@ class SubjectOffering extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function curriculumProgram(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumProgram::class);
+    }
+
+    public function curriculumEntry(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumEntry::class);
     }
 
     public function academicTerm(): BelongsTo

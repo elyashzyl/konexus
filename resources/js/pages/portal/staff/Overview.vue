@@ -15,24 +15,42 @@ const portal = computed(() => {
 });
 
 const roleLabel = computed(() => portal.value?.label ?? 'School staff');
+
+function moduleHref(key: string): string | null {
+    if (key === 'announcements') {
+        return `${route.path}/announcements`;
+    }
+
+    if (key === 'enrollment-operations') {
+        return `${route.path}/enrollment-operations`;
+    }
+
+    if (key === 'online-enrollment') {
+        return '/enrollment';
+    }
+
+    return null;
+}
 </script>
 
 <template>
     <div class="relative">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]" />
+        <div
+            class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]"
+        />
 
         <div class="relative w-full px-5 pb-20 sm:px-8 lg:px-12">
-            <section class="portal-rise grid gap-12 pt-10 pb-14 lg:grid-cols-[1.25fr_0.75fr] lg:gap-16 lg:pt-16">
+            <section class="portal-rise grid gap-12 pb-14 pt-10 lg:grid-cols-[1.25fr_0.75fr] lg:gap-16 lg:pt-16">
                 <div class="flex flex-col justify-between">
                     <div>
                         <div class="flex items-center gap-3">
-                            <span class="flex size-9 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
+                            <span class="bg-primary/8 flex size-9 items-center justify-center rounded-lg text-primary ring-1 ring-primary/10">
                                 <BriefcaseBusiness class="size-4" />
                             </span>
-                            <p class="text-[11px] font-medium tracking-[0.22em] text-primary uppercase">{{ portal?.eyebrow }}</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">{{ portal?.eyebrow }}</p>
                         </div>
 
-                        <h1 class="mt-8 font-display text-[3rem] leading-[1.02] font-medium tracking-[-0.025em] text-foreground sm:text-[4rem]">
+                        <h1 class="mt-8 font-display text-[3rem] font-medium leading-[1.02] tracking-[-0.025em] text-foreground sm:text-[4rem]">
                             {{ auth.user?.name }}
                         </h1>
                         <p class="mt-5 max-w-xl text-[15px] leading-7 text-muted-foreground">
@@ -54,7 +72,7 @@ const roleLabel = computed(() => portal.value?.label ?? 'School staff');
                     <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
                     <div>
                         <div class="flex items-center justify-between">
-                            <p class="text-[11px] font-medium tracking-[0.22em] text-muted-foreground uppercase">Your role</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Your role</p>
                             <span class="size-1.5 rounded-full bg-primary" />
                         </div>
 
@@ -71,7 +89,7 @@ const roleLabel = computed(() => portal.value?.label ?? 'School staff');
                         </div>
                     </div>
 
-                    <p class="mt-8 border-t border-border/60 pt-4 font-mono text-[10px] tracking-[0.18em] text-muted-foreground/70 uppercase">
+                    <p class="mt-8 border-t border-border/60 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
                         {{ portal?.eyebrow }} · Staff portal
                     </p>
                 </aside>
@@ -80,8 +98,10 @@ const roleLabel = computed(() => portal.value?.label ?? 'School staff');
             <section class="portal-rise mt-8" style="animation-delay: 160ms">
                 <div class="flex items-end justify-between gap-6">
                     <div>
-                        <p class="text-[11px] font-medium tracking-[0.22em] text-primary uppercase">Workspace</p>
-                        <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">In your {{ roleLabel.toLowerCase() }} workspace</h2>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Workspace</p>
+                        <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">
+                            In your {{ roleLabel.toLowerCase() }} workspace
+                        </h2>
                     </div>
                 </div>
 
@@ -98,9 +118,9 @@ const roleLabel = computed(() => portal.value?.label ?? 'School staff');
                         </div>
 
                         <RouterLink
-                            v-if="module.key === 'announcements'"
-                            :to="`${route.path}/announcements`"
-                            class="mt-6 inline-flex w-fit items-center gap-1.5 text-xs font-medium tracking-[0.14em] text-primary uppercase transition-opacity group-hover:opacity-80"
+                            v-if="moduleHref(module.key)"
+                            :to="moduleHref(module.key)!"
+                            class="mt-6 inline-flex w-fit items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-opacity group-hover:opacity-80"
                         >
                             Open
                             <ArrowUpRight class="size-3.5" />

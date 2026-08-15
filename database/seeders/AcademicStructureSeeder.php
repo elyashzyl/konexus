@@ -44,6 +44,12 @@ class AcademicStructureSeeder extends Seeder
      * @var list<array{name: string, code: string, short_name: string, education_level: string, sequence: int}>
      */
     protected array $gradeLevels = [
+        ['name' => 'Grade 1', 'code' => '1', 'short_name' => 'G1', 'education_level' => 'primary', 'sequence' => 1],
+        ['name' => 'Grade 2', 'code' => '2', 'short_name' => 'G2', 'education_level' => 'primary', 'sequence' => 2],
+        ['name' => 'Grade 3', 'code' => '3', 'short_name' => 'G3', 'education_level' => 'primary', 'sequence' => 3],
+        ['name' => 'Grade 4', 'code' => '4', 'short_name' => 'G4', 'education_level' => 'primary', 'sequence' => 4],
+        ['name' => 'Grade 5', 'code' => '5', 'short_name' => 'G5', 'education_level' => 'primary', 'sequence' => 5],
+        ['name' => 'Grade 6', 'code' => '6', 'short_name' => 'G6', 'education_level' => 'primary', 'sequence' => 6],
         ['name' => 'Grade 7', 'code' => '7', 'short_name' => 'G7', 'education_level' => 'junior-high', 'sequence' => 7],
         ['name' => 'Grade 8', 'code' => '8', 'short_name' => 'G8', 'education_level' => 'junior-high', 'sequence' => 8],
         ['name' => 'Grade 9', 'code' => '9', 'short_name' => 'G9', 'education_level' => 'junior-high', 'sequence' => 9],
@@ -58,6 +64,7 @@ class AcademicStructureSeeder extends Seeder
      * @var array<string, list<string>>
      */
     protected array $sections = [
+        'Grade 1' => ['A'], 'Grade 2' => ['A'], 'Grade 3' => ['A'], 'Grade 4' => ['A'], 'Grade 5' => ['A'], 'Grade 6' => ['A'],
         'Grade 7' => ['Diamond', 'Emerald'],
         'Grade 8' => ['Amethyst', 'Topaz'],
         'Grade 9' => ['Ruby', 'Sapphire'],

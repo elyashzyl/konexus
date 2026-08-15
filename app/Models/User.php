@@ -29,6 +29,7 @@ class User extends Authenticatable
         'avatar',
         'is_active',
         'school_profile_id',
+        'active_campus_id',
         'last_login_at',
     ];
 
@@ -61,9 +62,17 @@ class User extends Authenticatable
     }
 
     /**
+     * The campus workspace most recently selected by this user.
+     */
+    public function activeCampus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class, 'active_campus_id');
+    }
+
+    /**
      * The external OAuth identities linked to this account.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<SocialAccount>
+     * @return HasMany<SocialAccount>
      */
     public function socialAccounts(): HasMany
     {

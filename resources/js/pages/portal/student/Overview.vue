@@ -6,6 +6,7 @@ import type { AnnouncementItem, ChildSummary } from '@/types/platform';
 import {
     ArrowRight,
     BookOpen,
+    CalendarCheck2,
     CalendarDays,
     CheckCircle2,
     FileText,
@@ -45,8 +46,14 @@ const identifiers = computed(() => [
 
 const quickLinks = computed<{ title: string; description: string; href: string; icon: LucideIcon }[]>(() => [
     { title: 'Grades', description: 'Published grading records and report cards.', href: '/portal/student/grades', icon: BookOpen },
+    { title: 'Attendance', description: 'Your submitted daily attendance summary.', href: '/portal/student/attendance', icon: CalendarCheck2 },
     { title: 'Weekly schedule', description: 'The timetable for the current term.', href: '/portal/student/schedule', icon: CalendarDays },
-    { title: 'Enrollment history', description: 'Every school year on the official record.', href: '/portal/student/enrollments', icon: GraduationCap },
+    {
+        title: 'Enrollment history',
+        description: 'Every school year on the official record.',
+        href: '/portal/student/enrollments',
+        icon: GraduationCap,
+    },
     { title: 'Private documents', description: 'Secure files released by the registrar.', href: '/portal/student/documents', icon: FileText },
     { title: 'Announcements', description: 'School news and official notices.', href: '/portal/student/announcements', icon: Megaphone },
 ]);
@@ -63,7 +70,9 @@ function pad(index: number): string {
 
 <template>
     <div class="relative">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]" />
+        <div
+            class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]"
+        />
 
         <div class="relative w-full px-5 pb-20 sm:px-8 lg:px-12">
             <div v-if="loading" class="space-y-4 pt-10">
@@ -79,21 +88,22 @@ function pad(index: number): string {
             </div>
 
             <template v-else>
-                <section class="portal-rise grid gap-12 pt-10 pb-14 lg:grid-cols-[1.25fr_0.75fr] lg:gap-16 lg:pt-16">
+                <section class="portal-rise grid gap-12 pb-14 pt-10 lg:grid-cols-[1.25fr_0.75fr] lg:gap-16 lg:pt-16">
                     <div class="flex flex-col justify-between">
                         <div>
                             <div class="flex items-center gap-3">
-                                <span class="flex size-9 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
+                                <span class="bg-primary/8 flex size-9 items-center justify-center rounded-lg text-primary ring-1 ring-primary/10">
                                     <GraduationCap class="size-4" />
                                 </span>
-                                <p class="text-[11px] font-medium tracking-[0.22em] text-primary uppercase">Official learner record</p>
+                                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Official learner record</p>
                             </div>
 
-                            <h1 class="mt-8 font-display text-[3rem] leading-[1.02] font-medium tracking-[-0.025em] text-foreground sm:text-[4rem]">
+                            <h1 class="mt-8 font-display text-[3rem] font-medium leading-[1.02] tracking-[-0.025em] text-foreground sm:text-[4rem]">
                                 {{ profile.name }}
                             </h1>
                             <p class="mt-5 text-[15px] leading-7 text-muted-foreground">
-                                Welcome back. Your records are kept here as the registrar maintains them — private, current, and always available to you.
+                                Welcome back. Your records are kept here as the registrar maintains them — private, current, and always available to
+                                you.
                             </p>
                         </div>
 
@@ -108,10 +118,12 @@ function pad(index: number): string {
                     </div>
 
                     <aside class="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card p-7">
-                        <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                        <div
+                            class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"
+                        />
                         <div>
                             <div class="flex items-center justify-between">
-                                <p class="text-[11px] font-medium tracking-[0.22em] text-muted-foreground uppercase">Current standing</p>
+                                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Current standing</p>
                                 <span class="size-1.5 rounded-full bg-primary" />
                             </div>
 
@@ -144,12 +156,14 @@ function pad(index: number): string {
 
                         <div class="mt-8 flex items-center gap-3 border-t border-border/60 pt-4 text-sm">
                             <div class="flex-1">
-                                <p class="text-[10px] font-medium tracking-[0.2em] text-muted-foreground/70 uppercase">General average</p>
+                                <p class="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">General average</p>
                                 <p class="mt-1 font-display text-2xl font-medium tracking-[-0.01em] text-foreground">
                                     {{ profile.academic_summary.general_average ?? '—' }}
                                 </p>
                             </div>
-                            <p class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground/70 uppercase">Ver {{ String(profile.id).padStart(5, '0') }}</p>
+                            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+                                Ver {{ String(profile.id).padStart(5, '0') }}
+                            </p>
                         </div>
                     </aside>
                 </section>
@@ -159,7 +173,7 @@ function pad(index: number): string {
                         <div v-for="(item, index) in identifiers" :key="item.label" class="flex items-center gap-4 px-6 py-5">
                             <span class="index-num font-mono text-xs text-muted-foreground/60">{{ pad(index) }}</span>
                             <div class="min-w-0">
-                                <p class="text-[10px] font-medium tracking-[0.2em] text-muted-foreground/70 uppercase">{{ item.label }}</p>
+                                <p class="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">{{ item.label }}</p>
                                 <p class="mt-1 truncate font-mono text-sm font-medium text-foreground">{{ item.value }}</p>
                             </div>
                         </div>
@@ -169,10 +183,10 @@ function pad(index: number): string {
                 <section v-if="quickLinks.length" class="portal-rise mt-16" style="animation-delay: 160ms">
                     <div class="flex items-end justify-between gap-6">
                         <div>
-                            <p class="text-[11px] font-medium tracking-[0.22em] text-primary uppercase">Contents</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Contents</p>
                             <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">Your portal</h2>
                         </div>
-                        <p class="hidden font-mono text-[11px] tracking-[0.18em] text-muted-foreground/70 uppercase sm:block">
+                        <p class="hidden font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70 sm:block">
                             {{ quickLinks.length }} sections
                         </p>
                     </div>
@@ -187,14 +201,18 @@ function pad(index: number): string {
                             <span class="index-num w-7 shrink-0 font-mono text-xs text-muted-foreground/60 transition group-hover:text-primary">
                                 {{ pad(index) }}
                             </span>
-                            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/6 text-primary ring-1 ring-primary/10 transition group-hover:bg-primary group-hover:text-primary-foreground">
+                            <span
+                                class="bg-primary/6 flex size-9 shrink-0 items-center justify-center rounded-lg text-primary ring-1 ring-primary/10 transition group-hover:bg-primary group-hover:text-primary-foreground"
+                            >
                                 <component :is="link.icon" class="size-4" />
                             </span>
                             <span class="min-w-0 flex-1">
                                 <span class="block font-display text-lg font-medium tracking-[-0.01em] text-foreground">{{ link.title }}</span>
                                 <span class="mt-0.5 block truncate text-[13px] text-muted-foreground">{{ link.description }}</span>
                             </span>
-                            <ArrowRight class="size-4 shrink-0 text-muted-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                            <ArrowRight
+                                class="size-4 shrink-0 text-muted-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary"
+                            />
                         </RouterLink>
                     </div>
                 </section>
@@ -202,7 +220,7 @@ function pad(index: number): string {
                 <section v-if="announcements.length" class="portal-rise mt-16" style="animation-delay: 240ms">
                     <div class="flex items-baseline justify-between gap-4">
                         <div>
-                            <p class="text-[11px] font-medium tracking-[0.22em] text-muted-foreground uppercase">School life</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">School life</p>
                             <h3 class="mt-2 font-display text-2xl font-medium tracking-[-0.01em] text-foreground">Announcements</h3>
                         </div>
                         <RouterLink
@@ -226,7 +244,9 @@ function pad(index: number): string {
                                 <p class="truncate text-[15px] font-medium text-foreground group-hover:underline">{{ announcement.title }}</p>
                                 <p class="mt-0.5 text-xs text-muted-foreground">{{ formatDate(announcement.published_at) }}</p>
                             </div>
-                            <ArrowRight class="size-4 shrink-0 text-muted-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                            <ArrowRight
+                                class="size-4 shrink-0 text-muted-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary"
+                            />
                         </RouterLink>
                     </div>
                 </section>

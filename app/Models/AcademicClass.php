@@ -94,6 +94,11 @@ class AcademicClass extends Model
         return $this->members()->where('is_active', true);
     }
 
+    public function attendanceSessions(): HasMany
+    {
+        return $this->hasMany(AttendanceSession::class);
+    }
+
     /**
      * @return HasManyThrough<Student, AcademicClassStudent, $this>
      */
