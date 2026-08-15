@@ -7,14 +7,17 @@ import {
     CalendarClock,
     CalendarDays,
     CalendarRange,
+    ClipboardList,
     Database,
     DoorOpen,
+    GraduationCap,
     Layers,
     LayoutGrid,
     Megaphone,
     Network,
     School,
     Settings,
+    Wallet,
 } from 'lucide-vue-next';
 
 export interface FoundationModule {
@@ -75,6 +78,25 @@ const PRIORITIES: CrudOption[] = [
     { value: 'high', label: 'High' },
     { value: 'urgent', label: 'Urgent' },
 ];
+
+const GENDERS: CrudOption[] = [
+    { value: 'male', label: 'Male' },
+    { value: 'female', label: 'Female' },
+];
+
+const ENROLLMENT_TYPES: CrudOption[] = [
+    { value: 'new-student', label: 'New Student' },
+    { value: 'continuing', label: 'Continuing' },
+    { value: 'returning', label: 'Returning' },
+    { value: 'transferee', label: 'Transferee' },
+    { value: 're-enrollee', label: 'Re-Enrollee' },
+];
+
+const currency = (value: unknown): string => {
+    const amount = Number(value) || 0;
+
+    return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 export const FOUNDATION_MODULES: FoundationModule[] = [
     {
@@ -439,6 +461,118 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'sort_order', label: 'Sort order', type: 'number' },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
+    },
+    {
+        key: 'students',
+        path: '/school/students',
+        title: 'Students',
+        description: 'Student records, identities, contact and emergency details.',
+        resource: 'students',
+        singularLabel: 'student',
+        icon: GraduationCap,
+        columns: [
+            { key: 'student_number', label: 'Student #', sortable: true },
+            { key: 'name', label: 'Student', sortable: true },
+            { key: 'gender', label: 'Gender' },
+            { key: 'birth_date', label: 'Birth date' },
+            { key: 'status', label: 'Status' },
+            { key: 'is_active', label: 'Status', align: 'center' },
+        ],
+        fields: [
+            { name: 'first_name', label: 'First name', type: 'text', required: true },
+            { name: 'middle_name', label: 'Middle name', type: 'text' },
+            { name: 'last_name', label: 'Last name', type: 'text', required: true },
+            { name: 'extension_name', label: 'Extension', type: 'text', placeholder: 'e.g. Jr., III' },
+            { name: 'nickname', label: 'Nickname', type: 'text' },
+            { name: 'gender', label: 'Gender', type: 'select', options: GENDERS, required: true },
+            { name: 'birth_date', label: 'Birth date', type: 'date', required: true },
+            { name: 'student_number', label: 'Student number', type: 'text' },
+            { name: 'lrn', label: 'LRN', type: 'text', placeholder: '12-digit learner reference number' },
+            { name: 'school_student_id', label: 'School student ID', type: 'text' },
+            { name: 'rfid_number', label: 'RFID number', type: 'text' },
+            { name: 'mobile_number', label: 'Mobile number', type: 'text' },
+            { name: 'email', label: 'Email', type: 'email' },
+            { name: 'status', label: 'Status', type: 'text', placeholder: 'e.g. enrolled, inactive' },
+            { name: 'current_address', label: 'Current address', type: 'textarea', fullWidth: true },
+            { name: 'permanent_address', label: 'Permanent address', type: 'textarea', fullWidth: true },
+            { name: 'emergency_contact_name', label: 'Emergency contact', type: 'text' },
+            { name: 'emergency_contact_relationship', label: 'Emergency contact relationship', type: 'text' },
+            { name: 'emergency_contact_mobile', label: 'Emergency contact mobile', type: 'text' },
+            { name: 'is_active', label: 'Active', type: 'switch' },
+        ],
+    },
+    {
+        key: 'enrollments',
+        path: '/school/enrollments',
+        title: 'Enrollment Data',
+        description: 'Student enrollment records across academic years.',
+        resource: 'enrollments',
+        singularLabel: 'enrollment',
+        icon: ClipboardList,
+        columns: [
+            { key: 'enrollment_number', label: 'Enrollment #', sortable: true },
+            { key: 'student', label: 'Student' },
+            { key: 'academic_year', label: 'Academic year' },
+            { key: 'grade_level', label: 'Grade level' },
+            { key: 'section', label: 'Section' },
+            { key: 'enrollment_type', label: 'Type' },
+            { key: 'status', label: 'Status' },
+            { key: 'is_active', label: 'Status', align: 'center' },
+        ],
+        fields: [
+            { name: 'student_id', label: 'Student', type: 'select', optionsResource: 'students', optionsLabelKey: 'name', required: true },
+            { name: 'academic_year_id', label: 'Academic year', type: 'select', optionsResource: 'academic-years', required: true },
+            { name: 'campus_id', label: 'Campus', type: 'select', optionsResource: 'campuses', required: true },
+            { name: 'grade_level_id', label: 'Grade level', type: 'select', optionsResource: 'grade-levels', required: true },
+            { name: 'section_id', label: 'Section', type: 'select', optionsResource: 'sections' },
+            { name: 'enrollment_type', label: 'Enrollment type', type: 'select', options: ENROLLMENT_TYPES, required: true },
+            { name: 'enrollment_date', label: 'Enrollment date', type: 'date' },
+            { name: 'payment_status', label: 'Payment status', type: 'text', placeholder: 'e.g. unpaid, partial, paid' },
+            { name: 'down_payment', label: 'Down payment', type: 'number' },
+            { name: 'notes', label: 'Notes', type: 'textarea', fullWidth: true },
+            { name: 'is_active', label: 'Active', type: 'switch' },
+        ],
+        optionSources: {
+            student_id: 'students',
+            academic_year_id: 'academic-years',
+            campus_id: 'campuses',
+            grade_level_id: 'grade-levels',
+            section_id: 'sections',
+        },
+    },
+    {
+        key: 'tuitions',
+        path: '/school/tuitions',
+        title: 'Tuition Data',
+        description: 'Per-student tuition, fees, payments and balances.',
+        resource: 'tuitions',
+        singularLabel: 'tuition record',
+        icon: Wallet,
+        columns: [
+            { key: 'reference_number', label: 'Reference', sortable: true },
+            { key: 'student', label: 'Student' },
+            { key: 'academic_year', label: 'Academic year' },
+            { key: 'total', label: 'Total', align: 'right', sortable: true, cell: (row) => currency(row.total) },
+            { key: 'amount_paid', label: 'Paid', align: 'right', sortable: true, cell: (row) => currency(row.amount_paid) },
+            { key: 'balance', label: 'Balance', align: 'right', sortable: true, cell: (row) => currency(row.balance) },
+            { key: 'status', label: 'Status' },
+            { key: 'is_active', label: 'Status', align: 'center' },
+        ],
+        fields: [
+            { name: 'student_id', label: 'Student', type: 'select', optionsResource: 'students', optionsLabelKey: 'name', required: true },
+            { name: 'academic_year_id', label: 'Academic year', type: 'select', optionsResource: 'academic-years', required: true },
+            { name: 'tuition_fee', label: 'Tuition fee', type: 'number', hint: 'Total and balance are computed automatically.' },
+            { name: 'misc_fee', label: 'Miscellaneous fee', type: 'number' },
+            { name: 'other_fees', label: 'Other fees', type: 'number' },
+            { name: 'discount', label: 'Discount', type: 'number' },
+            { name: 'amount_paid', label: 'Amount paid', type: 'number' },
+            { name: 'notes', label: 'Notes', type: 'textarea', fullWidth: true },
+            { name: 'is_active', label: 'Active', type: 'switch' },
+        ],
+        optionSources: {
+            student_id: 'students',
+            academic_year_id: 'academic-years',
+        },
     },
 ];
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import SocialAuthButtons from '@/components/SocialAuthButtons.vue';
 import { Button } from '@/components/ui/button';
 import { APP_ROUTES, AUTH_ROUTES } from '@/constants/app';
 import api from '@/lib/api';
@@ -49,9 +50,10 @@ onMounted(async () => {
     }
 });
 
-const navLinks = [
+const navLinks: { label: string; href?: string; to?: string }[] = [
     { label: 'Modules', href: '#modules' },
     { label: 'Portals', href: '#portals' },
+    { label: 'Enrollment', to: APP_ROUTES.enrollment.path },
     { label: 'Why KONEXUS', href: '#why' },
     { label: 'Pricing', href: '#pricing' },
 ];
@@ -165,14 +167,22 @@ const mockSidebar = ['Overview', 'Enrollment', 'Schedules', 'Grades', 'Reports',
                 </RouterLink>
 
                 <nav class="hidden items-center gap-8 md:flex">
-                    <a
-                        v-for="link in navLinks"
-                        :key="link.href"
-                        :href="link.href"
-                        class="text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                        {{ link.label }}
-                    </a>
+                    <template v-for="link in navLinks" :key="link.label">
+                        <RouterLink
+                            v-if="link.to"
+                            :to="link.to"
+                            class="text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            {{ link.label }}
+                        </RouterLink>
+                        <a
+                            v-else
+                            :href="link.href"
+                            class="text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            {{ link.label }}
+                        </a>
+                    </template>
                 </nav>
 
                 <div class="flex items-center gap-2">
@@ -200,14 +210,25 @@ const mockSidebar = ['Overview', 'Enrollment', 'Schedules', 'Grades', 'Reports',
                 </p>
                 <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
                     <Button size="lg" class="gap-2" as-child>
-                        <RouterLink :to="AUTH_ROUTES.register.path">
-                            Explore the modules
+                        <RouterLink :to="APP_ROUTES.enrollment.path">
+                            Start enrollment
                             <ArrowRight class="size-4" />
                         </RouterLink>
                     </Button>
                     <Button size="lg" variant="outline" as-child>
+                        <RouterLink :to="AUTH_ROUTES.register.path">Explore the modules</RouterLink>
+                    </Button>
+                    <Button size="lg" variant="ghost" as-child>
                         <RouterLink :to="AUTH_ROUTES.login.path">Sign in to your portal</RouterLink>
                     </Button>
+                </div>
+                <div class="mx-auto mt-8 max-w-md">
+                    <div class="flex items-center gap-3">
+                        <span class="h-px flex-1 bg-border/70" />
+                        <span class="text-xs uppercase tracking-wider text-muted-foreground">or enroll with</span>
+                        <span class="h-px flex-1 bg-border/70" />
+                    </div>
+                    <SocialAuthButtons class="mt-4" intended="/enrollment" label="Enroll with" />
                 </div>
             </div>
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\SystemSettingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -20,6 +21,7 @@ class SystemSetting extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'school_profile_id',
         'group',
         'key',
         'value',
@@ -27,6 +29,14 @@ class SystemSetting extends Model
         'is_public',
         'sort_order',
     ];
+
+    /**
+     * The school this setting belongs to.
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
+    }
 
     /**
      * Get the attributes that should be cast.

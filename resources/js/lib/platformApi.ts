@@ -58,9 +58,19 @@ export const platformApi = {
         roleOptions: () => api.get<{ data: { items: { name: string; label: string }[] } }>('/users/role-options').then((r) => r.data.data.items),
     },
     settings: {
-        index: () => api.get<{ data: { groups: SettingsGroup[] } }>('/system-settings/grouped').then((r) => r.data.data.groups),
-        update: (settings: Record<string, string>) =>
-            api.put<{ data: { updated: Record<string, string> } }>('/system-settings/grouped', { settings }).then((r) => r.data.data),
+        index: (schoolProfileId?: number | null) =>
+            api
+                .get<{ data: { school: SchoolRef | null; groups: SettingsGroup[] } }>('/system-settings/grouped', {
+                    params: schoolProfileId ? { school_profile_id: schoolProfileId } : {},
+                })
+                .then((r) => r.data.data),
+        update: (settings: Record<string, string>, schoolProfileId?: number | null) =>
+            api
+                .put<{ data: { school_profile_id: number; updated: Record<string, string> } }>('/system-settings/grouped', {
+                    settings,
+                    ...(schoolProfileId ? { school_profile_id: schoolProfileId } : {}),
+                })
+                .then((r) => r.data.data),
     },
     reports: {
         catalog: () => api.get<{ data: { items: ReportDescriptor[]; context: ReportContext } }>('/reports').then((r) => r.data.data),
@@ -129,14 +139,22 @@ export interface UserInput {
 export interface SettingsGroup {
     group: string;
     label: string;
+    description?: string;
     settings: {
         key: string;
         label: string;
+        description?: string;
         type: string;
-        options: string[];
+        options: { value: string; label: string }[];
         value: string | null;
         is_public: boolean;
     }[];
+}
+
+export interface SchoolRef {
+    id: number;
+    name: string;
+    short_name: string | null;
 }
 
 export interface ReportDescriptor {

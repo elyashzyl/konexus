@@ -119,4 +119,74 @@ class SchoolIsolationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.pagination.total', 1);
     }
+
+    public function test_school_admin_cannot_create_a_school_profile(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $admin = $this->schoolAdmin($schoolA);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/school-profiles', ['name' => 'Rogue School', 'is_active' => true])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('school_profiles', ['name' => 'Rogue School']);
+    }
+
+    public function test_school_admin_can_update_their_own_school_profile(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $admin = $this->schoolAdmin($schoolA);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/school-profiles/{$schoolA->id}", ['name' => 'Renamed School', 'motto' => 'Excellence'])
+            ->assertOk();
+
+        $this->assertDatabaseHas('school_profiles', ['id' => $schoolA->id, 'name' => 'Renamed School', 'motto' => 'Excellence']);
+    }
+
+    public function test_school_admin_cannot_update_another_schools_profile(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $schoolB = $this->school('Beta School');
+        $admin = $this->schoolAdmin($schoolA);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/school-profiles/{$schoolB->id}", ['name' => 'Hacked Name'])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('school_profiles', ['id' => $schoolB->id, 'name' => 'Beta School']);
+    }
+
+    public function test_school_admin_cannot_delete_a_school_profile(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $admin = $this->schoolAdmin($schoolA);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/school-profiles/{$schoolA->id}")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('school_profiles', ['id' => $schoolA->id]);
+    }
+
+    public function test_super_admin_can_create_a_school_profile(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum')
+            ->postJson('/api/v1/school-profiles', ['name' => 'New School', 'is_active' => true])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('school_profiles', ['name' => 'New School']);
+    }
+
+    public function test_platform_admin_cannot_access_school_profiles(): void
+    {
+        $this->school('Alpha School');
+
+        $user = User::factory()->create();
+        $user->assignRole(RoleEnum::PLATFORM_ADMINISTRATOR->roleName());
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/school-profiles')
+            ->assertForbidden();
+    }
 }

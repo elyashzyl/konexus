@@ -8,21 +8,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { extractError } from '@/lib/api';
-import { platformApi, type SettingsGroup } from '@/lib/platformApi';
+import api, { extractError } from '@/lib/api';
+import { platformApi, type SchoolRef, type SettingsGroup } from '@/lib/platformApi';
 import { subscriptionApi, type SubscriptionSettingItem } from '@/lib/subscriptionApi';
-import { Check, Save, Settings2 } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { Check, Building2, CircleAlert, Save, Settings2 } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+const auth = useAuthStore();
+
+const isSuperAdmin = computed(() => auth.can('super-administrator'));
+const isPlatformOperator = computed(() => auth.can('super-administrator') || auth.can('platform-administrator'));
+
 const scope = ref<'system' | 'subscription'>('system');
+
+// System settings are per-school. Super administrators pick the school to
+// configure; school administrators are always editing their own.
+const systemSchoolId = ref<number | null>(null);
+const systemSchoolName = ref('');
+const schools = ref<SchoolRef[]>([]);
 
 const loading = ref(true);
 const saving = ref(false);
 const groups = ref<SettingsGroup[]>([]);
 const activeGroup = ref<string>('');
 const draft = ref<Record<string, string>>({});
+const initialDraft = ref<Record<string, string>>({});
 const savedKeys = ref<Set<string>>(new Set());
+
+let savedTimer: ReturnType<typeof setTimeout> | undefined;
 
 const subLoading = ref(false);
 const subSaving = ref(false);
@@ -30,12 +45,49 @@ const subGroups = ref<Record<string, SubscriptionSettingItem[]>>({});
 const subDirty = ref<Set<string>>(new Set());
 
 onMounted(async () => {
+    if (isSuperAdmin.value) {
+        try {
+            const { data } = await api.get<{ data: { items: SchoolRef[] } }>('/school-profiles', {
+                params: { per_page: 100 },
+            });
+            schools.value = data.data.items;
+        } catch (error) {
+            toast.error(extractError(error));
+        }
+
+        await selectSchool(schools.value[0]?.id ?? null);
+    } else {
+        await selectSchool(auth.user?.school_profile_id ?? null);
+    }
+
+    await loadSubSettings();
+});
+
+async function selectSchool(schoolId: number | null): Promise<void> {
+    systemSchoolId.value = schoolId;
+    await loadSystemSettings();
+}
+
+async function loadSystemSettings(): Promise<void> {
+    loading.value = true;
+    savedKeys.value = new Set();
+
     try {
-        groups.value = await platformApi.settings.index();
+        const data = await platformApi.settings.index(systemSchoolId.value);
+
+        systemSchoolId.value = data.school?.id ?? null;
+        systemSchoolName.value = data.school?.name ?? '';
+
+        groups.value = data.groups;
         activeGroup.value = groups.value[0]?.group ?? '';
+        draft.value = {};
+        initialDraft.value = {};
+
         for (const group of groups.value) {
             for (const setting of group.settings) {
-                draft.value[setting.key] = setting.value ?? '';
+                const value = setting.value ?? '';
+                draft.value[setting.key] = value;
+                initialDraft.value[setting.key] = value;
             }
         }
     } catch (error) {
@@ -43,9 +95,7 @@ onMounted(async () => {
     } finally {
         loading.value = false;
     }
-
-    await loadSubSettings();
-});
+}
 
 async function loadSubSettings(): Promise<void> {
     subLoading.value = true;
@@ -64,6 +114,32 @@ function switchScope(next: 'system' | 'subscription'): void {
 
 const active = () => groups.value.find((group) => group.group === activeGroup.value);
 
+const isDirty = (key: string): boolean => draft.value[key] !== initialDraft.value[key];
+
+const dirtyCount = (group: SettingsGroup): number => group.settings.filter((setting) => isDirty(setting.key)).length;
+
+function setDraft(key: string, value: string): void {
+    draft.value[key] = value;
+
+    if (savedKeys.value.has(key)) {
+        savedKeys.value = new Set([...savedKeys.value].filter((saved) => saved !== key));
+    }
+}
+
+const boolOn = (key: string): boolean => draft.value[key] === '1' || draft.value[key] === 'true';
+
+function setBool(key: string, on: boolean): void {
+    setDraft(key, on ? '1' : '0');
+}
+
+function markSaved(keys: string[]): void {
+    savedKeys.value = new Set(keys);
+    if (savedTimer) clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+        savedKeys.value = new Set();
+    }, 3000);
+}
+
 async function saveGroup(): Promise<void> {
     const group = active();
     if (!group) return;
@@ -75,9 +151,12 @@ async function saveGroup(): Promise<void> {
             payload[setting.key] = draft.value[setting.key] ?? '';
         }
 
-        await platformApi.settings.update(payload);
-        savedKeys.value = new Set(group.settings.map((setting) => setting.key));
-        toast.success('Settings saved.');
+        await platformApi.settings.update(payload, systemSchoolId.value);
+        for (const setting of group.settings) {
+            initialDraft.value[setting.key] = draft.value[setting.key] ?? '';
+        }
+        markSaved(group.settings.map((setting) => setting.key));
+        toast.success(`${group.label} settings saved.`);
     } catch (error) {
         toast.error(extractError(error));
     } finally {
@@ -126,7 +205,7 @@ async function saveSubSettings(): Promise<void> {
                 index="04"
                 eyebrow="Configuration"
                 title="Settings"
-                description="Grouped system configuration."
+                description="School-specific settings, plus platform-wide subscription configuration."
             />
 
             <div class="portal-rise mt-8 inline-flex rounded-lg border border-border/60 bg-muted/40 p-1">
@@ -139,6 +218,7 @@ async function saveSubSettings(): Promise<void> {
                     System settings
                 </Button>
                 <Button
+                    v-if="isPlatformOperator"
                     variant="ghost"
                     size="sm"
                     :class="scope === 'subscription' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'"
@@ -149,6 +229,36 @@ async function saveSubSettings(): Promise<void> {
             </div>
 
             <template v-if="scope === 'system'">
+                <div class="portal-rise mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <Building2 class="size-4 text-muted-foreground" />
+                        <span class="text-sm font-medium">School:</span>
+                    </div>
+
+                    <template v-if="isSuperAdmin">
+                        <Select
+                            :model-value="String(systemSchoolId ?? '')"
+                            @update:model-value="(value: string) => selectSchool(Number(value))"
+                        >
+                            <SelectTrigger class="w-72">
+                                <SelectValue placeholder="Select a school…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="school in schools" :key="school.id" :value="String(school.id)">
+                                    {{ school.name }}{{ school.short_name ? ` (${school.short_name})` : '' }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </template>
+                    <template v-else>
+                        <span class="text-sm text-muted-foreground">{{ systemSchoolName || 'Not linked to a school' }}</span>
+                    </template>
+
+                    <span v-if="systemSchoolName" class="ml-auto hidden text-xs text-muted-foreground sm:block">
+                        Editing settings for <span class="font-medium text-foreground">{{ systemSchoolName }}</span>
+                    </span>
+                </div>
+
                 <div v-if="loading" class="portal-rise mt-10 space-y-2">
                     <Skeleton v-for="i in 6" :key="i" class="h-12" />
                 </div>
@@ -169,43 +279,79 @@ async function saveSubSettings(): Promise<void> {
 
                     <Card v-if="active()" class="portal-rise relative mt-6 overflow-hidden border-border/60 bg-card/60">
                         <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-                        <CardHeader class="flex flex-row items-center justify-between">
+                        <CardHeader class="flex flex-row items-start justify-between gap-4">
                             <div>
                                 <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">{{ active()!.label }}</CardTitle>
-                                <CardDescription>{{ active()!.settings.length }} settings</CardDescription>
+                                <CardDescription class="mt-1 max-w-xl">
+                                    {{ active()!.description }}
+                                    <span
+                                        v-if="dirtyCount(active()!) > 0"
+                                        class="mt-2 flex items-center gap-1.5 text-amber-600"
+                                    >
+                                        <CircleAlert class="size-3.5" />
+                                        You have {{ dirtyCount(active()!) }} unsaved change{{ dirtyCount(active()!) === 1 ? '' : 's' }} in this section.
+                                    </span>
+                                </CardDescription>
                             </div>
-                            <Button :disabled="saving" @click="saveGroup">
-                                <Save class="size-4" /> {{ saving ? 'Saving…' : 'Save group' }}
-                            </Button>
+                            <div class="flex items-center gap-3">
+                                <span
+                                    v-if="dirtyCount(active()!) > 0"
+                                    class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600"
+                                >
+                                    <CircleAlert class="size-3.5" />
+                                    Unsaved changes
+                                </span>
+                                <Button :disabled="saving || dirtyCount(active()!) === 0" @click="saveGroup">
+                                    <Save class="size-4" /> {{ saving ? 'Saving…' : 'Save changes' }}
+                                </Button>
+                            </div>
                         </CardHeader>
-                        <CardContent class="space-y-4">
-                            <div v-for="setting in active()!.settings" :key="setting.key" class="grid gap-3 rounded-xl border border-border/60 px-4 py-3 md:grid-cols-2">
+                        <CardContent class="space-y-3">
+                            <div
+                                v-for="setting in active()!.settings"
+                                :key="setting.key"
+                                class="grid gap-3 rounded-xl border border-border/60 px-4 py-3 transition-colors md:grid-cols-2"
+                                :class="isDirty(setting.key) ? 'border-amber-400/60 bg-amber-500/[0.04]' : ''"
+                            >
                                 <div>
-                                    <p class="text-sm font-medium">{{ setting.label }}</p>
-                                    <p class="text-xs text-muted-foreground">{{ setting.key }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-medium">{{ setting.label }}</p>
+                                        <span v-if="savedKeys.has(setting.key)" class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+                                            <Check class="size-3.5" /> Saved
+                                        </span>
+                                        <span v-else-if="isDirty(setting.key)" class="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+                                            <CircleAlert class="size-3.5" /> Unsaved
+                                        </span>
+                                    </div>
+                                    <p v-if="setting.description" class="mt-0.5 text-xs text-muted-foreground">{{ setting.description }}</p>
                                 </div>
 
-                                <div class="flex items-center justify-end gap-2">
+                                <div class="flex items-center justify-end gap-3">
                                     <template v-if="setting.type === 'select'">
-                                        <Select :model-value="draft[setting.key] ?? ''" @update:model-value="(v: string) => (draft[setting.key] = v)">
+                                        <Select :model-value="draft[setting.key] ?? ''" @update:model-value="(value: string) => setDraft(setting.key, value)">
                                             <SelectTrigger class="w-56">
-                                                <SelectValue :placeholder="draft[setting.key] ?? 'Select…'" />
+                                                <SelectValue placeholder="Select…" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem v-for="option in setting.options" :key="option" :value="option">{{ option }}</SelectItem>
+                                                <SelectItem v-for="option in setting.options" :key="option.value" :value="option.value">{{ option.label }}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </template>
                                     <template v-else-if="setting.type === 'boolean'">
-                                        <Switch :model-value="draft[setting.key] === '1' || draft[setting.key] === 'true'" @update:model-value="(v: boolean) => (draft[setting.key] = v ? '1' : '0')" />
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-sm font-medium" :class="boolOn(setting.key) ? 'text-emerald-600' : 'text-muted-foreground'">
+                                                {{ boolOn(setting.key) ? 'Enabled' : 'Disabled' }}
+                                            </span>
+                                            <Switch :model-value="boolOn(setting.key)" @update:model-value="(value: boolean) => setBool(setting.key, value)" />
+                                        </div>
                                     </template>
                                     <template v-else>
-                                        <Input v-model="draft[setting.key]" class="w-56" />
+                                        <Input
+                                            :model-value="draft[setting.key] ?? ''"
+                                            class="w-56"
+                                            @update:model-value="(value: string | number) => setDraft(setting.key, String(value))"
+                                        />
                                     </template>
-
-                                    <span v-if="savedKeys.has(setting.key)" class="flex items-center gap-1 text-xs text-emerald-600">
-                                        <Check class="size-3.5" /> Saved
-                                    </span>
                                 </div>
                             </div>
                         </CardContent>

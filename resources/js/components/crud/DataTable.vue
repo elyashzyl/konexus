@@ -156,13 +156,10 @@ onMounted(() => {
                         <Input v-model="store.search" class="pl-9" placeholder="Search…" @input="onSearchInput" />
                     </div>
 
-                    <Button v-if="store.trashed" variant="outline" size="sm" class="gap-2" @click="toggleTrash">
-                        <RefreshCcw class="size-4" />
-                        Active records
-                    </Button>
-                    <Button v-else variant="outline" size="sm" class="gap-2" @click="toggleTrash">
-                        <Trash2 class="size-4" />
-                        Deleted records
+                    <Button variant="outline" size="sm" class="gap-2" @click="toggleTrash">
+                        <RefreshCcw v-if="store.trashed" class="size-4" />
+                        <Trash2 v-else class="size-4" />
+                        {{ store.trashed ? 'Active records' : 'Deleted records' }}
                     </Button>
                 </div>
             </section>

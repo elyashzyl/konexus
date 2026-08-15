@@ -17,3 +17,12 @@ Artisan::command('inspire', function () {
 Schedule::call(fn () => app(SubscriptionCheckService::class)->run())
     ->daily()
     ->name('subscription-checks');
+
+/**
+ * Online enrollment maintenance. Purges unfinished enrollment applications
+ * after the retention window per the Data Privacy notice on the public form.
+ */
+Schedule::command('enrollments:purge-abandoned')
+    ->dailyAt('00:30')
+    ->withoutOverlapping()
+    ->name('enrollments-purge-abandoned');

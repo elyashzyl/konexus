@@ -105,6 +105,21 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function socialLogin(socialToken: string): Promise<User> {
+        storeToken(socialToken);
+        token.value = socialToken;
+        status.value = 'authenticated';
+
+        try {
+            await fetchMe();
+        } catch {
+            clearAuth();
+            throw new Error('We could not load your profile. Please try again.');
+        }
+
+        return user.value as User;
+    }
+
     function clearAuth(): void {
         token.value = null;
         user.value = null;
@@ -225,6 +240,7 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         register,
         logout,
+        socialLogin,
         clearAuth,
         impersonate,
         stopImpersonating,

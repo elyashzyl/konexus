@@ -6,6 +6,7 @@ use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -57,6 +58,16 @@ class User extends Authenticatable
     public function schoolProfile(): BelongsTo
     {
         return $this->belongsTo(SchoolProfile::class);
+    }
+
+    /**
+     * The external OAuth identities linked to this account.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<SocialAccount>
+     */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
     }
 
     /**

@@ -39,6 +39,8 @@ class ParentGuardian extends Model
         'email',
         'address',
         'relationship',
+        'not_applicable',
+        'maiden_name',
         'status',
         'user_id',
         'is_active',
@@ -52,6 +54,7 @@ class ParentGuardian extends Model
     protected function casts(): array
     {
         return [
+            'not_applicable' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

@@ -18,6 +18,14 @@ class GradeLevelFactory extends Factory
     protected $model = GradeLevel::class;
 
     /**
+     * Counter used to keep generated grade level names and codes unique, since
+     * both columns are globally unique across all schools.
+     *
+     * @var int
+     */
+    protected static int $counter = 0;
+
+    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
@@ -25,10 +33,11 @@ class GradeLevelFactory extends Factory
     public function definition(): array
     {
         $grade = fake()->numberBetween(7, 12);
+        $n = ++static::$counter;
 
         return [
-            'name' => 'Grade '.$grade,
-            'code' => (string) $grade,
+            'name' => $n === 1 ? 'Grade '.$grade : 'Grade '.$grade.' ('.$n.')',
+            'code' => $n === 1 ? (string) $grade : (string) $grade.'-'.$n,
             'short_name' => 'G'.$grade,
             'education_level' => $grade <= 10 ? 'junior-high' : 'senior-high',
             'sequence' => $grade,

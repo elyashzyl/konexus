@@ -44,6 +44,9 @@ class Student extends Model
         'religion',
         'ethnicity',
         'mother_tongue',
+        'interests',
+        'is_indigenous',
+        'family_monthly_income',
         'blood_type',
         'profile_picture_path',
         'status',
@@ -89,6 +92,8 @@ class Student extends Model
     {
         return [
             'birth_date' => 'date',
+            'interests' => 'array',
+            'is_indigenous' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

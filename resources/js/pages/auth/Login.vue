@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import SocialAuthButtons from '@/components/SocialAuthButtons.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -124,4 +125,12 @@ const submit = async () => {
             <TextLink :href="AUTH_ROUTES.register.path" :tabindex="5">Sign up</TextLink>
         </div>
     </form>
+
+    <div class="mt-6 flex items-center gap-3">
+        <span class="h-px flex-1 bg-border" />
+        <span class="text-xs uppercase tracking-wider text-muted-foreground">or</span>
+        <span class="h-px flex-1 bg-border" />
+    </div>
+
+    <SocialAuthButtons class="mt-6" />
 </template>

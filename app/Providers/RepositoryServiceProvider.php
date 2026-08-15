@@ -61,6 +61,7 @@ use App\Repositories\Contracts\SubjectRepositoryInterface;
 use App\Repositories\Contracts\SystemSettingRepositoryInterface;
 use App\Repositories\Contracts\TeacherAssignmentRepositoryInterface;
 use App\Repositories\Contracts\TeacherRepositoryInterface;
+use App\Repositories\Contracts\TuitionRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\CurriculumEntryRepository;
 use App\Repositories\DepartmentRepository;
@@ -103,6 +104,7 @@ use App\Repositories\SystemSettingRepository;
 use App\Repositories\TeacherAssignmentRepository;
 use App\Repositories\TeacherRepository;
 use App\Repositories\TenantRepository;
+use App\Repositories\TuitionRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -161,6 +163,9 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(GradeRecordRepositoryInterface::class, GradeRecordRepository::class);
         $this->app->bind(GradeCorrectionRepositoryInterface::class, GradeCorrectionRepository::class);
         $this->app->bind(AcademicSettingRepositoryInterface::class, AcademicSettingRepository::class);
+
+        // Tuition records
+        $this->app->bind(TuitionRepositoryInterface::class, TuitionRepository::class);
 
         // Part 10 – Platform Subscription & License Management repositories
         $this->app->bind(TenantRepositoryInterface::class, TenantRepository::class);

@@ -32,6 +32,11 @@ class PlatformModuleTest extends TestCase
         return $user;
     }
 
+    private function school(string $name = 'Alpha School'): SchoolProfile
+    {
+        return SchoolProfile::factory()->create(['name' => $name, 'is_active' => true]);
+    }
+
     private function schoolAdmin(?SchoolProfile $school = null): User
     {
         $user = User::factory()->create(['school_profile_id' => $school?->id]);
@@ -370,30 +375,115 @@ class PlatformModuleTest extends TestCase
 
     public function test_grouped_settings_update(): void
     {
+        $school = $this->school('Alpha School');
         $admin = $this->superAdmin();
 
         $this->actingAs($admin)
-            ->getJson('/api/v1/system-settings/grouped')
+            ->getJson('/api/v1/system-settings/grouped?school_profile_id='.$school->id)
             ->assertOk()
-            ->assertJsonStructure(['data' => ['groups']]);
+            ->assertJsonStructure(['data' => ['school', 'groups']])
+            ->assertJsonPath('data.school.id', $school->id)
+            ->assertJsonPath('data.school.name', 'Alpha School')
+            ->assertJsonPath('data.groups.0.description', 'Basic information about your school and how its school year is structured.')
+            ->assertJsonStructure([
+                'data' => [
+                    'groups' => [
+                        0 => [
+                            'settings' => [
+                                0 => ['key', 'label', 'description', 'type', 'options', 'value', 'is_public'],
+                            ],
+                        ],
+                    ],
+                ],
+            ])
+            ->assertJsonPath('data.groups.0.settings.2.options.0.value', 'quarterly')
+            ->assertJsonPath('data.groups.0.settings.2.options.0.label', 'Quarterly');
 
         $this->actingAs($admin)
             ->putJson('/api/v1/system-settings/grouped', [
+                'school_profile_id' => $school->id,
                 'settings' => ['school_name' => 'KONEXUS Academy', 'sms_enabled' => 'true'],
             ])
             ->assertOk()
             ->assertJsonPath('data.updated.school_name', 'KONEXUS Academy');
 
-        $this->assertDatabaseHas('system_settings', ['key' => 'school_name', 'value' => 'KONEXUS Academy']);
+        $this->assertDatabaseHas('system_settings', [
+            'school_profile_id' => $school->id,
+            'key' => 'school_name',
+            'value' => 'KONEXUS Academy',
+        ]);
     }
 
     public function test_grouped_settings_reject_unknown_key(): void
     {
+        $school = $this->school();
         $admin = $this->superAdmin();
 
         $this->actingAs($admin)
-            ->putJson('/api/v1/system-settings/grouped', ['settings' => ['unknown_key' => 'x']])
+            ->putJson('/api/v1/system-settings/grouped', [
+                'school_profile_id' => $school->id,
+                'settings' => ['unknown_key' => 'x'],
+            ])
             ->assertStatus(422);
+    }
+
+    public function test_system_settings_are_isolated_per_school(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $schoolB = $this->school('Beta School');
+        $admin = $this->superAdmin();
+
+        $this->actingAs($admin)->putJson('/api/v1/system-settings/grouped', [
+            'school_profile_id' => $schoolA->id,
+            'settings' => ['school_name' => 'Alpha Name', 'accent_color' => 'emerald'],
+        ])->assertOk();
+
+        $this->actingAs($admin)->putJson('/api/v1/system-settings/grouped', [
+            'school_profile_id' => $schoolB->id,
+            'settings' => ['school_name' => 'Beta Name'],
+        ])->assertOk();
+
+        $alpha = $this->actingAs($admin)
+            ->getJson('/api/v1/system-settings/grouped?school_profile_id='.$schoolA->id)
+            ->assertOk()
+            ->json('data.groups');
+
+        $beta = $this->actingAs($admin)
+            ->getJson('/api/v1/system-settings/grouped?school_profile_id='.$schoolB->id)
+            ->assertOk()
+            ->json('data.groups');
+
+        $alphaValues = collect($alpha)->flatMap(fn ($group) => collect($group['settings'])->pluck('value', 'key'));
+        $betaValues = collect($beta)->flatMap(fn ($group) => collect($group['settings'])->pluck('value', 'key'));
+
+        $this->assertSame('Alpha Name', $alphaValues->get('school_name'));
+        $this->assertSame('emerald', $alphaValues->get('accent_color'));
+        $this->assertSame('Beta Name', $betaValues->get('school_name'));
+        $this->assertNull($betaValues->get('accent_color'));
+    }
+
+    public function test_school_admin_operates_only_on_own_school_settings(): void
+    {
+        $schoolA = $this->school('Alpha School');
+        $schoolB = $this->school('Beta School');
+        $admin = $this->schoolAdmin($schoolA);
+
+        $this->actingAs($admin)
+            ->putJson('/api/v1/system-settings/grouped', [
+                'school_profile_id' => $schoolB->id,
+                'settings' => ['school_name' => 'Hacked Name'],
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('system_settings', [
+            'school_profile_id' => $schoolA->id,
+            'key' => 'school_name',
+            'value' => 'Hacked Name',
+        ]);
+        $this->assertDatabaseMissing('system_settings', [
+            'school_profile_id' => $schoolB->id,
+            'key' => 'school_name',
+        ]);
     }
 
     // ─────────────────────────────────────────

@@ -17,6 +17,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: APP_NAME, requiresGuest: true },
     },
     {
+        path: '/enrollment',
+        name: APP_ROUTES.enrollment.name,
+        component: () => import('@/pages/Enrollment.vue'),
+        meta: { title: 'Online Enrollment' },
+    },
+    {
         path: '/dashboard',
         component: AppLayout,
         meta: { requiresAuth: true },
@@ -88,6 +94,12 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('@/pages/auth/ResetPassword.vue'),
                 meta: { title: 'Reset password', description: 'Choose a new password for your account.' },
             },
+            {
+                path: 'social/callback',
+                name: AUTH_ROUTES['social-callback'].name,
+                component: () => import('@/pages/auth/SocialAuthCallback.vue'),
+                meta: { title: 'Completing sign-in' },
+            },
         ],
     },
     {
@@ -149,7 +161,7 @@ router.beforeEach(async (to) => {
         return { path: homePathForRoles(auth.user?.roles) };
     }
 
-    if (auth.isAuthenticated && !isAdmin(auth.user?.roles) && !to.path.startsWith('/portal/')) {
+    if (auth.isAuthenticated && !isAdmin(auth.user?.roles) && !to.path.startsWith('/portal/') && to.path !== APP_ROUTES.enrollment.path) {
         const home = homePathForRoles(auth.user?.roles);
 
         if (home && to.path !== home) {
@@ -166,7 +178,7 @@ router.beforeEach(async (to) => {
         }
     }
 
-    if (auth.isAuthenticated && isAdmin(auth.user?.roles) && !auth.can('school-administrator')) {
+    if (auth.isAuthenticated && isAdmin(auth.user?.roles) && !auth.can('school-administrator') && !auth.can('super-administrator')) {
         const foundationPaths = FOUNDATION_MODULES.map((module) => module.path);
 
         if (foundationPaths.some((path) => to.path.startsWith(path))) {

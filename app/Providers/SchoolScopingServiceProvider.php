@@ -39,9 +39,11 @@ use App\Models\Student;
 use App\Models\StudentDocument;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
+use App\Models\SystemSetting;
 use App\Models\Teacher;
 use App\Models\TeacherAssignment;
 use App\Models\Tenant;
+use App\Models\Tuition;
 use App\Models\User;
 use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\Model;
@@ -101,8 +103,10 @@ class SchoolScopingServiceProvider extends ServiceProvider
         StudentDocument::class,
         Subject::class,
         SubjectOffering::class,
+        SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,
+        Tuition::class,
     ];
 
     /**
@@ -148,8 +152,10 @@ class SchoolScopingServiceProvider extends ServiceProvider
         StudentDocument::class,
         Subject::class,
         SubjectOffering::class,
+        SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,
+        Tuition::class,
     ];
 
     /**

@@ -23,8 +23,10 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const canManageSchool = computed(() => auth.can('school-administrator') || auth.can('super-administrator'));
+
 const schoolNavItems = computed<NavItem[]>(() =>
-    auth.can('school-administrator')
+    canManageSchool.value
         ? FOUNDATION_MODULES.map((module) => ({
               title: module.title,
               href: module.path,

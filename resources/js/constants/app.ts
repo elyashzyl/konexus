@@ -10,10 +10,12 @@ export const AUTH_ROUTES = {
     register: { name: 'auth.register', path: '/auth/register' },
     'forgot-password': { name: 'auth.forgot-password', path: '/auth/forgot-password' },
     'reset-password': { name: 'auth.reset-password', path: '/auth/reset-password' },
+    'social-callback': { name: 'auth.social-callback', path: '/auth/social/callback' },
 } as const;
 
 export const APP_ROUTES = {
     landing: { name: 'landing', path: '/' },
+    enrollment: { name: 'enrollment', path: '/enrollment' },
     dashboard: { name: 'dashboard', path: '/dashboard' },
     settings: {
         profile: { name: 'settings.profile', path: '/settings/profile' },

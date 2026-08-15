@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\Auth\SocialAuthController;
 use App\Http\Controllers\Api\V1\BackupController;
 use App\Http\Controllers\Api\V1\BuildingController;
 use App\Http\Controllers\Api\V1\CampusController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Api\V1\PlatformDashboardController;
 use App\Http\Controllers\Api\V1\Portal\ParentPortalController;
 use App\Http\Controllers\Api\V1\Portal\StudentPortalController;
 use App\Http\Controllers\Api\V1\Portal\TeacherPortalController;
+use App\Http\Controllers\Api\V1\PublicEnrollmentController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\RoomController;
@@ -59,6 +61,7 @@ use App\Http\Controllers\Api\V1\SystemSettingsGroupController;
 use App\Http\Controllers\Api\V1\TeacherAssignmentController;
 use App\Http\Controllers\Api\V1\TeacherController;
 use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\TuitionController;
 use App\Http\Controllers\Api\V1\UsageController;
 use App\Http\Controllers\Api\V1\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -118,6 +121,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
             ->middleware('throttle:password')
             ->name('password.store');
 
+        // Social sign-in (Google / Facebook) – unauthenticated OAuth hand-off.
+        Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])
+            ->middleware('throttle:social.redirect')
+            ->name('social.redirect');
+        Route::get('{provider}/callback', [SocialAuthController::class, 'callback'])
+            ->middleware('throttle:social.callback')
+            ->name('social.callback');
+
         // ─────────────────────────────────────────
         // Authenticated authentication endpoints
         // ─────────────────────────────────────────
@@ -143,6 +154,39 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     // Public marketing catalog of active subscription plans (landing page).
     Route::get('public/plans', [SubscriptionPlanController::class, 'publicCatalog'])->name('public-plans');
 
+    // Public online enrollment application (Part 1) – no authentication required.
+    Route::get('public/enrollment/options', [PublicEnrollmentController::class, 'options'])->name('public.enrollment.options');
+    Route::post('public/enrollments', [PublicEnrollmentController::class, 'store'])
+        ->middleware('throttle:enrollment')
+        ->name('public.enrollments.store');
+
+    // Resume an in-progress application.
+    Route::get('public/enrollments/{enrollment}', [PublicEnrollmentController::class, 'show'])
+        ->name('public.enrollments.show');
+
+    // Part 2 – Student information.
+    Route::put('public/enrollments/{enrollment}/student', [PublicEnrollmentController::class, 'storeStudent'])
+        ->middleware('throttle:enrollment.student')
+        ->name('public.enrollments.student');
+    Route::post('public/enrollments/{enrollment}/student/photo', [PublicEnrollmentController::class, 'storeStudentPhoto'])
+        ->middleware('throttle:enrollment.photo')
+        ->name('public.enrollments.student.photo');
+
+    // Part 3 – Family background.
+    Route::put('public/enrollments/{enrollment}/family', [PublicEnrollmentController::class, 'storeFamily'])
+        ->middleware('throttle:enrollment.family')
+        ->name('public.enrollments.family');
+
+    // Parts 4-8 – Siblings, tuition plan, medical history, Chinese details, and agreements.
+    Route::put('public/enrollments/{enrollment}/details', [PublicEnrollmentController::class, 'storeDetails'])
+        ->middleware('throttle:enrollment.details')
+        ->name('public.enrollments.details');
+
+    // Part 9 – Digital signatures.
+    Route::post('public/enrollments/{enrollment}/signature', [PublicEnrollmentController::class, 'storeSignature'])
+        ->middleware('throttle:enrollment.signature')
+        ->name('public.enrollments.signature');
+
     // ─────────────────────────────────────────
     // Phase 2 core modules
     // ─────────────────────────────────────────
@@ -159,7 +203,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
             ->name('system-settings.grouped.update');
 
         $crudRoutes('system-settings', 'system-settings', SystemSettingController::class);
-        $crudRoutes('school-profiles', 'school-profiles', SchoolProfileController::class);
+
+        // School Profile management is reserved for super administrators;
+        // school administrators only read their own school (policy + scope).
+        Route::middleware('roles:super-administrator,school-administrator')->group(function () use ($crudRoutes): void {
+            $crudRoutes('school-profiles', 'school-profiles', SchoolProfileController::class);
+        });
+
         $crudRoutes('campuses', 'campuses', CampusController::class);
         $crudRoutes('academic-years', 'academic-years', AcademicYearController::class);
         $crudRoutes('academic-terms', 'academic-terms', AcademicTermController::class);
@@ -244,6 +294,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
         });
 
         $crudRoutes('enrollment-requirements', 'enrollment-requirements', EnrollmentRequirementController::class);
+
+        // Tuition records (per-student fee breakdown, payments and balance).
+        $crudRoutes('tuitions', 'tuitions', TuitionController::class);
 
         // ─────────────────────────────────────────
         // Part 6 – Academic Management
