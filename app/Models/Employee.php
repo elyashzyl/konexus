@@ -6,6 +6,7 @@ use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -55,6 +56,16 @@ class Employee extends Model
             'date_hired' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * The campuses this employee is assigned to.
+     *
+     * @return BelongsToMany<Campus, $this>
+     */
+    public function campuses(): BelongsToMany
+    {
+        return $this->belongsToMany(Campus::class);
     }
 
     /**

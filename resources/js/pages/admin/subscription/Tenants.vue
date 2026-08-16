@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractError, extractFieldErrors } from '@/lib/api';
 import { subscriptionApi, type TenantItem, type TenantUsage } from '@/lib/subscriptionApi';
-import { Building2, ChartNoAxesCombined, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
+import { Building2, ChartNoAxesCombined, Pause, Pencil, Play, Trash2 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -96,13 +96,6 @@ async function refresh(): Promise<void> {
     }
 }
 
-function openCreate(): void {
-    editing.value = null;
-    form.value = { name: '', code: '' };
-    fieldErrors.value = {};
-    dialogOpen.value = true;
-}
-
 function openEdit(tenant: TenantItem): void {
     editing.value = tenant;
     form.value = { name: tenant.name, code: tenant.code };
@@ -114,16 +107,11 @@ async function save(): Promise<void> {
     saving.value = true;
     fieldErrors.value = {};
     try {
-        const payload: Record<string, unknown> = { name: form.value.name };
-        if (form.value.code) payload.code = form.value.code;
-
-        if (editing.value) {
-            const updated = await subscriptionApi.tenants.update(editing.value.id, payload);
-            toast.success(`Tenant "${updated.name}" updated.`);
-        } else {
-            const created = await subscriptionApi.tenants.store(payload);
-            toast.success(`Tenant "${created.name}" created.`);
-        }
+        const updated = await subscriptionApi.tenants.update(editing.value!.id, {
+            name: form.value.name,
+            ...(form.value.code ? { code: form.value.code } : {}),
+        });
+        toast.success(`Tenant "${updated.name}" updated.`);
         dialogOpen.value = false;
         await refresh();
     } catch (error) {
@@ -184,11 +172,8 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                 index="02"
                 eyebrow="Platform"
                 title="Tenants"
-                description="Schools and organizations provisioned on the platform."
+                description="Every tenant corresponds to a school registered on the platform."
             >
-                <template #actions>
-                    <Button @click="openCreate"><Plus class="size-4" /> New tenant</Button>
-                </template>
             </AdminPageHeader>
 
             <section class="portal-rise mt-10">
@@ -333,8 +318,8 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
             <Dialog v-model:open="dialogOpen">
                 <DialogContent class="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle>{{ editing ? `Edit ${editing.name}` : 'New tenant' }}</DialogTitle>
-                        <DialogDescription>Register a school organization on the platform.</DialogDescription>
+                        <DialogTitle v-if="editing">Edit {{ editing.name }}</DialogTitle>
+                        <DialogDescription>Adjust the display name or code of this registered school.</DialogDescription>
                     </DialogHeader>
                     <form class="grid grid-cols-1 gap-4 sm:grid-cols-2" @submit.prevent="save">
                         <div class="space-y-2">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminPageHeader from '@/components/AdminPageHeader.vue';
 import InputError from '@/components/InputError.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import api, { extractError, extractFieldErrors } from '@/lib/api';
 import { foundationModuleByKey } from '@/modules/foundation/config';
 import { useAuthStore } from '@/stores/auth';
+import { useWorkspaceStore } from '@/stores/workspace';
 import type { CrudField } from '@/types/crud';
-import { Building2, Plus, Save, Trash2 } from 'lucide-vue-next';
+import { Building2, ChevronRight, Plus, Save, Trash2 } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -21,20 +23,25 @@ interface SchoolOption {
     id: number;
     name: string;
     short_name: string | null;
+    is_active?: boolean;
+    is_primary?: boolean;
 }
 
 const auth = useAuthStore();
+const workspace = useWorkspaceStore();
 
 const module = foundationModuleByKey('school-profile');
 const fields = module?.fields ?? [];
 
 const isSuperAdmin = computed(() => auth.can('super-administrator'));
+const activeSchoolId = computed(() => workspace.activeCampus?.school_profile_id ?? auth.user?.school_profile_id ?? null);
 
 const schools = ref<SchoolOption[]>([]);
 const selectedId = ref<number | null>(null);
 const creating = ref(false);
 const loading = ref(true);
 const saving = ref(false);
+const deletingId = ref<number | null>(null);
 const fieldErrors = ref<Record<string, string[]>>({});
 
 const form = reactive<Record<string, any>>({});
@@ -132,20 +139,22 @@ async function save(): Promise<void> {
     }
 }
 
-async function removeSchool(): Promise<void> {
-    if (!selectedId.value || creating.value) {
+async function removeSchool(school: SchoolOption): Promise<void> {
+    if (school.id === activeSchoolId.value || deletingId.value) {
         return;
     }
 
-    if (!window.confirm('Delete this school profile? This cannot be undone.')) {
+    if (!window.confirm(`Delete school "${school.name}"? Its profile and campuses will be archived and can be restored later.`)) {
         return;
     }
+
+    deletingId.value = school.id;
 
     try {
-        await api.delete(`/school-profiles/${selectedId.value}`);
+        await api.delete(`/school-profiles/${school.id}`);
         toast.success('School profile deleted.');
 
-        await refreshSchoolsList();
+        await Promise.all([refreshSchoolsList(), workspace.initialize(true)]);
 
         if (schools.value.length > 0) {
             await loadSchool(schools.value[0].id);
@@ -154,6 +163,8 @@ async function removeSchool(): Promise<void> {
         }
     } catch (error) {
         toast.error(extractError(error));
+    } finally {
+        deletingId.value = null;
     }
 }
 
@@ -201,41 +212,66 @@ onMounted(async () => {
                 </template>
             </AdminPageHeader>
 
-            <section v-if="isSuperAdmin" class="portal-rise mt-8 max-w-xl" style="animation-delay: 60ms">
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="text-base">Manage schools</CardTitle>
-                        <CardDescription>Pick a school to view or edit its profile.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="flex items-end gap-2">
-                            <div class="grid flex-1 gap-1.5">
-                                <Label for="school-picker">School</Label>
-                                <Select
-                                    id="school-picker"
-                                    :model-value="String(selectedId ?? '')"
-                                    @update:model-value="(value) => loadSchool(Number(value))"
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a school…" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem v-for="school in schools" :key="school.id" :value="String(school.id)">
-                                            {{ school.name }}{{ school.short_name ? ` (${school.short_name})` : '' }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+            <section v-if="isSuperAdmin" class="portal-rise mt-8" style="animation-delay: 60ms">
+                <div class="mb-4 flex items-end justify-between gap-4">
+                    <div>
+                        <h2 class="font-display text-2xl font-semibold tracking-tight">Schools</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">Pick a school card to view or edit its profile.</p>
+                    </div>
+                    <p class="hidden text-sm text-muted-foreground sm:block">{{ schools.length }} configured</p>
+                </div>
+
+                <div v-if="loading" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div v-for="item in 3" :key="item" class="h-48 animate-pulse rounded-xl border bg-muted/50" />
+                </div>
+
+                <div v-else-if="schools.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <Card
+                        v-for="school in schools"
+                        :key="school.id"
+                        class="group relative overflow-hidden transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+                        :class="school.id === selectedId && !creating ? 'border-primary/45 shadow-sm ring-1 ring-primary/15' : ''"
+                    >
+                        <CardHeader class="pb-4 pt-6">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 class="size-5" /></div>
+                                    <div class="min-w-0">
+                                        <CardTitle class="truncate text-base">{{ school.name }}</CardTitle>
+                                        <p class="mt-0.5 text-xs text-muted-foreground">{{ school.short_name ?? 'School profile' }}</p>
+                                    </div>
+                                </div>
+                                <Badge :variant="school.is_active ? 'secondary' : 'outline'" class="shrink-0 text-[10px]">{{ school.is_active ? 'Active' : 'Inactive' }}</Badge>
                             </div>
-                            <Button
-                                v-if="selectedId && !creating"
-                                variant="destructive"
-                                :disabled="saving || loading"
-                                @click="removeSchool"
-                            >
-                                <Trash2 class="size-4" />
-                                Delete
-                            </Button>
-                        </div>
+                        </CardHeader>
+                        <CardContent class="space-y-4">
+                            <p class="flex min-h-10 items-start gap-2 text-sm text-muted-foreground">{{ school.is_primary ? 'Primary school profile' : 'Standard school profile' }}</p>
+                            <div class="flex items-center justify-between gap-3 border-t pt-3">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    class="text-muted-foreground hover:text-destructive"
+                                    :disabled="deletingId === school.id || school.id === activeSchoolId"
+                                    :title="school.id === activeSchoolId ? 'Switch to another campus before deleting this school' : 'Delete school'"
+                                    @click="removeSchool(school)"
+                                >
+                                    <Trash2 class="size-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" @click="loadSchool(school.id)">
+                                    Edit
+                                    <ChevronRight class="size-4" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card v-else class="border-dashed bg-muted/20">
+                    <CardContent class="flex flex-col items-center px-6 py-12 text-center">
+                        <div class="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Building2 class="size-6" /></div>
+                        <h3 class="mt-4 font-display text-xl font-semibold">Register your first school</h3>
+                        <p class="mt-2 max-w-md text-sm text-muted-foreground">Add the school profile before creating its campuses.</p>
+                        <Button class="mt-5" @click="startCreate"><Plus class="size-4" />Create school</Button>
                     </CardContent>
                 </Card>
             </section>
@@ -261,7 +297,7 @@ onMounted(async () => {
                                             <Label :for="`field-${field.name}`" class="font-medium">{{ field.label }}</Label>
                                             <p v-if="field.hint" class="text-xs text-muted-foreground">{{ field.hint }}</p>
                                         </div>
-                                        <Switch :id="`field-${field.name}`" v-model="form[field.name]" />
+                                        <Switch :id="`field-${field.name}`" :checked="form[field.name]" @update:checked="form[field.name] = $event" />
                                     </div>
                                 </template>
 

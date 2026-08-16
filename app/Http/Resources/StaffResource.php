@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Campus;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,6 +34,10 @@ class StaffResource extends JsonResource
                     'id' => $this->employee->department->id,
                     'name' => $this->employee->department->name,
                 ] : null,
+                'campuses' => $this->whenLoaded('employee.campuses', fn () => $this->employee->campuses->map(fn (Campus $campus) => [
+                    'id' => $campus->id,
+                    'name' => $campus->name,
+                ])),
             ] : null),
             'support_area' => $this->support_area,
             'created_at' => $this->created_at?->toISOString(),

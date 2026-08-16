@@ -3,10 +3,13 @@
 namespace Tests\Feature\Modules;
 
 use App\Enums\RoleEnum;
+use App\Models\Campus;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Guardian;
 use App\Models\ParentGuardian;
+use App\Models\SchoolProfile;
+use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
@@ -187,5 +190,212 @@ class PeopleModulesTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/students')
             ->assertStatus(403);
+    }
+
+    public function test_employee_create_assigns_active_campus_by_default(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campus = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $employee = $this->postJson('/api/v1/employees', [
+            'first_name' => 'Ana',
+            'last_name' => 'Cruz',
+            'gender' => 'female',
+            'employment_type' => 'teaching',
+        ], ['X-Campus-Id' => $campus->id])->assertCreated()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('campus_employee', [
+            'campus_id' => $campus->id,
+            'employee_id' => $employee->json('data.id'),
+        ]);
+    }
+
+    public function test_employee_campus_ids_are_synced_on_update(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $employee = Employee::factory()->create(['school_profile_id' => $school->id]);
+
+        $base = [
+            'first_name' => $employee->first_name,
+            'last_name' => $employee->last_name,
+            'gender' => $employee->gender,
+            'employment_type' => 'teaching',
+        ];
+
+        $this->putJson("/api/v1/employees/{$employee->id}", $base + [
+            'campus_ids' => [$campusA->id, $campusB->id],
+        ], ['X-Campus-Id' => $campusA->id])->assertOk();
+
+        $this->assertDatabaseHas('campus_employee', ['campus_id' => $campusA->id, 'employee_id' => $employee->id]);
+        $this->assertDatabaseHas('campus_employee', ['campus_id' => $campusB->id, 'employee_id' => $employee->id]);
+
+        $this->putJson("/api/v1/employees/{$employee->id}", $base + [
+            'campus_ids' => [$campusB->id],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('campus_employee', ['campus_id' => $campusA->id, 'employee_id' => $employee->id]);
+        $this->assertDatabaseHas('campus_employee', ['campus_id' => $campusB->id, 'employee_id' => $employee->id]);
+    }
+
+    public function test_employee_listing_is_filtered_by_active_campus(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $inA = Employee::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Arias']);
+        $inA->campuses()->sync([$campusA->id]);
+
+        $inB = Employee::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Bautista']);
+        $inB->campuses()->sync([$campusB->id]);
+
+        $this->getJson('/api/v1/employees', ['X-Campus-Id' => $campusA->id])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.id', $inA->id)
+            ->assertJsonCount(1, 'data.items');
+
+        $this->getJson('/api/v1/employees', ['X-Campus-Id' => $campusB->id])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.id', $inB->id)
+            ->assertJsonCount(1, 'data.items');
+    }
+
+    public function test_employee_listing_is_not_filtered_without_active_campus(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $inA = Employee::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Arias']);
+        $inA->campuses()->sync([$campusA->id]);
+
+        $inB = Employee::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Bautista']);
+        $inB->campuses()->sync([$campusB->id]);
+
+        // Without the X-Campus-Id header the middleware resolves the first
+        // available campus for the super admin, so only that campus' people
+        // are returned rather than leaking both campuses together.
+        $this->getJson('/api/v1/employees')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items');
+    }
+
+    public function test_teacher_and_staff_listings_are_filtered_by_active_campus(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $teacherEmployee = Employee::factory()->create(['school_profile_id' => $school->id, 'employment_type' => 'teaching']);
+        $teacherEmployee->campuses()->sync([$campusA->id]);
+        Teacher::factory()->create(['employee_id' => $teacherEmployee->id]);
+
+        $otherTeacherEmployee = Employee::factory()->create(['school_profile_id' => $school->id, 'employment_type' => 'teaching']);
+        $otherTeacherEmployee->campuses()->sync([$campusB->id]);
+        Teacher::factory()->create(['employee_id' => $otherTeacherEmployee->id]);
+
+        $this->getJson('/api/v1/teachers', ['X-Campus-Id' => $campusA->id])
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.employee_id', $teacherEmployee->id);
+
+        $staffEmployee = Employee::factory()->create(['school_profile_id' => $school->id, 'employment_type' => 'staff']);
+        $staffEmployee->campuses()->sync([$campusA->id]);
+        Staff::factory()->create(['employee_id' => $staffEmployee->id]);
+
+        $this->getJson('/api/v1/staff', ['X-Campus-Id' => $campusA->id])
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.employee_id', $staffEmployee->id);
+    }
+
+    public function test_student_create_assigns_active_campus_by_default(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campus = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $student = $this->postJson('/api/v1/students', [
+            'first_name' => 'Rosa',
+            'last_name' => 'Lim',
+            'gender' => 'female',
+            'birth_date' => '2011-03-20',
+        ], ['X-Campus-Id' => $campus->id])->assertCreated()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('campus_student', [
+            'campus_id' => $campus->id,
+            'student_id' => $student->json('data.id'),
+        ]);
+    }
+
+    public function test_student_campus_ids_are_synced_on_update(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $student = Student::factory()->create(['school_profile_id' => $school->id]);
+
+        $base = [
+            'first_name' => $student->first_name,
+            'last_name' => $student->last_name,
+            'gender' => $student->gender,
+            'birth_date' => $student->birth_date->toDateString(),
+        ];
+
+        $this->putJson("/api/v1/students/{$student->id}", $base + [
+            'campus_ids' => [$campusA->id, $campusB->id],
+        ], ['X-Campus-Id' => $campusA->id])->assertOk();
+
+        $this->assertDatabaseHas('campus_student', ['campus_id' => $campusA->id, 'student_id' => $student->id]);
+        $this->assertDatabaseHas('campus_student', ['campus_id' => $campusB->id, 'student_id' => $student->id]);
+
+        $this->putJson("/api/v1/students/{$student->id}", $base + [
+            'campus_ids' => [$campusB->id],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('campus_student', ['campus_id' => $campusA->id, 'student_id' => $student->id]);
+        $this->assertDatabaseHas('campus_student', ['campus_id' => $campusB->id, 'student_id' => $student->id]);
+    }
+
+    public function test_student_listing_is_filtered_by_active_campus(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $school = SchoolProfile::factory()->create(['is_active' => true]);
+        $campusA = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+        $campusB = Campus::factory()->create(['school_profile_id' => $school->id, 'is_active' => true]);
+
+        $inA = Student::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Aquino']);
+        $inA->campuses()->sync([$campusA->id]);
+
+        $inB = Student::factory()->create(['school_profile_id' => $school->id, 'last_name' => 'Bello']);
+        $inB->campuses()->sync([$campusB->id]);
+
+        $this->getJson('/api/v1/students', ['X-Campus-Id' => $campusA->id])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.id', $inA->id)
+            ->assertJsonCount(1, 'data.items');
+
+        $this->getJson('/api/v1/students', ['X-Campus-Id' => $campusB->id])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.id', $inB->id)
+            ->assertJsonCount(1, 'data.items');
     }
 }

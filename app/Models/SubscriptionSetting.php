@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\SubscriptionSettingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SubscriptionSetting extends Model
 {
@@ -17,6 +18,7 @@ class SubscriptionSetting extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'school_profile_id',
         'key',
         'value',
         'group',
@@ -24,6 +26,14 @@ class SubscriptionSetting extends Model
         'description',
         'is_active',
     ];
+
+    /**
+     * The school this setting belongs to.
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
+    }
 
     /**
      * Get the attributes that should be cast.

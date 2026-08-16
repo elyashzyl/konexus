@@ -129,7 +129,7 @@ function handleSubmit(): void {
                                 <Label :for="`field-${field.name}`" class="font-medium">{{ field.label }}</Label>
                                 <p v-if="field.hint" class="text-xs text-muted-foreground">{{ field.hint }}</p>
                             </div>
-                            <Switch :id="`field-${field.name}`" v-model="form[field.name]" />
+                            <Switch :id="`field-${field.name}`" :checked="form[field.name]" @update:checked="form[field.name] = $event" />
                         </div>
                     </template>
 

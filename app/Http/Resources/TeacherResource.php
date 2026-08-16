@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Campus;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +30,10 @@ class TeacherResource extends JsonResource
                 'gender' => $this->employee->gender,
                 'email' => $this->employee->email,
                 'position' => $this->employee->position,
+                'campuses' => $this->whenLoaded('employee.campuses', fn () => $this->employee->campuses->map(fn (Campus $campus) => [
+                    'id' => $campus->id,
+                    'name' => $campus->name,
+                ])),
             ] : null),
             'prc_number' => $this->prc_number,
             'license_expiration' => $this->license_expiration?->toDateString(),

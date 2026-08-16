@@ -67,6 +67,8 @@ abstract class CrudService
         /** @var Builder<TModel> $query */
         $query = $this->repository()->query();
 
+        $this->applyPeopleCampusScope($query);
+
         if ($this->with !== []) {
             $query->with($this->with);
         }
@@ -117,6 +119,8 @@ abstract class CrudService
         /** @var Builder<TModel> $query */
         $query = $this->repository()->query();
 
+        $this->applyPeopleCampusScope($query);
+
         foreach ($filters as $key => $value) {
             if ($value === null || $value === '' || $value === 'all') {
                 continue;
@@ -138,6 +142,8 @@ abstract class CrudService
     {
         /** @var Builder<TModel> $query */
         $query = $this->repository()->query();
+
+        $this->applyPeopleCampusScope($query);
 
         if ($this->with !== []) {
             $query->with($this->with);
@@ -258,6 +264,19 @@ abstract class CrudService
     public function forceDelete(Model $model): bool
     {
         return (bool) $model->forceDelete();
+    }
+
+    /**
+     * Apply the active-campus constraint for people listings.
+     *
+     * Subclasses representing people records override this to restrict
+     * listings to employees assigned to the active campus workspace.
+     *
+     * @param  Builder<TModel>  $query
+     */
+    protected function applyPeopleCampusScope(Builder $query): void
+    {
+        //
     }
 
     /**

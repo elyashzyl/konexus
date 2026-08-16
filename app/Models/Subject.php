@@ -22,6 +22,7 @@ class Subject extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'name',
         'code',
         'description',
@@ -50,6 +51,26 @@ class Subject extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * The campus this subject belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this subject belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

@@ -43,9 +43,11 @@ const subLoading = ref(false);
 const subSaving = ref(false);
 const subGroups = ref<Record<string, SubscriptionSettingItem[]>>({});
 const subDirty = ref<Set<string>>(new Set());
+const subSchoolId = ref<number | null>(null);
+const subSchoolName = ref('');
 
 onMounted(async () => {
-    if (isSuperAdmin.value) {
+    if (isPlatformOperator.value) {
         try {
             const { data } = await api.get<{ data: { items: SchoolRef[] } }>('/school-profiles', {
                 params: { per_page: 100 },
@@ -54,11 +56,16 @@ onMounted(async () => {
         } catch (error) {
             toast.error(extractError(error));
         }
+    }
 
+    if (isSuperAdmin.value) {
         await selectSchool(schools.value[0]?.id ?? null);
     } else {
         await selectSchool(auth.user?.school_profile_id ?? null);
     }
+
+    subSchoolId.value = isPlatformOperator.value ? (schools.value[0]?.id ?? null) : null;
+    subSchoolName.value = schools.value[0]?.name ?? '';
 
     await loadSubSettings();
 });
@@ -100,12 +107,19 @@ async function loadSystemSettings(): Promise<void> {
 async function loadSubSettings(): Promise<void> {
     subLoading.value = true;
     try {
-        subGroups.value = await subscriptionApi.settings.grouped();
+        subGroups.value = await subscriptionApi.settings.grouped(subSchoolId.value);
+        subDirty.value.clear();
     } catch (error) {
         toast.error(extractError(error));
     } finally {
         subLoading.value = false;
     }
+}
+
+function selectSubSchool(schoolId: number): void {
+    subSchoolId.value = schoolId;
+    subSchoolName.value = schools.value.find((school) => school.id === schoolId)?.name ?? '';
+    loadSubSettings();
 }
 
 function switchScope(next: 'system' | 'subscription'): void {
@@ -184,7 +198,7 @@ async function saveSubSettings(): Promise<void> {
         }
     }
     try {
-        subGroups.value = await subscriptionApi.settings.bulk(payload);
+        subGroups.value = await subscriptionApi.settings.bulk(payload, subSchoolId.value);
         subDirty.value.clear();
         toast.success('Settings saved.');
     } catch (error) {
@@ -342,7 +356,7 @@ async function saveSubSettings(): Promise<void> {
                                             <span class="text-sm font-medium" :class="boolOn(setting.key) ? 'text-emerald-600' : 'text-muted-foreground'">
                                                 {{ boolOn(setting.key) ? 'Enabled' : 'Disabled' }}
                                             </span>
-                                            <Switch :model-value="boolOn(setting.key)" @update:model-value="(value: boolean) => setBool(setting.key, value)" />
+                                            <Switch :checked="boolOn(setting.key)" @update:checked="(value: boolean) => setBool(setting.key, value)" />
                                         </div>
                                     </template>
                                     <template v-else>
@@ -360,6 +374,31 @@ async function saveSubSettings(): Promise<void> {
             </template>
 
             <template v-else>
+                <div v-if="isPlatformOperator" class="portal-rise mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <Building2 class="size-4 text-muted-foreground" />
+                        <span class="text-sm font-medium">Workspace:</span>
+                    </div>
+
+                    <Select
+                        :model-value="String(subSchoolId ?? '')"
+                        @update:model-value="(value: string) => selectSubSchool(Number(value))"
+                    >
+                        <SelectTrigger class="w-72">
+                            <SelectValue placeholder="Select a school…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem v-for="school in schools" :key="school.id" :value="String(school.id)">
+                                {{ school.name }}{{ school.short_name ? ` (${school.short_name})` : '' }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <span v-if="subSchoolName" class="ml-auto hidden text-xs text-muted-foreground sm:block">
+                        Editing subscription settings for <span class="font-medium text-foreground">{{ subSchoolName }}</span>
+                    </span>
+                </div>
+
                 <section v-if="subLoading" class="portal-rise mt-10 space-y-4">
                     <Skeleton v-for="i in 3" :key="i" class="h-40" />
                 </section>

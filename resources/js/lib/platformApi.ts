@@ -51,11 +51,17 @@ export const platformApi = {
         store: (payload: UserInput) => api.post<{ data: AdminUser }>('/users', payload).then((r) => r.data.data),
         update: (id: number, payload: Partial<UserInput>) => api.put<{ data: AdminUser }>(`/users/${id}`, payload).then((r) => r.data.data),
         syncRoles: (id: number, roles: string[]) => api.put<{ data: AdminUser }>(`/users/${id}/roles`, { roles }).then((r) => r.data.data),
-        toggleActive: (id: number) => api.patch<{ data: AdminUser }>(`/users/${id}/toggle-active`).then((r) => r.data.data),
+        toggleActive: (id: number) => api.patch<{ data: AdminUser }>(`/users/${id}/active`).then((r) => r.data.data),
         resetPassword: (id: number, password: string) =>
             api.post<{ data: null }>(`/users/${id}/reset-password`, { password }).then((r) => r.data.data),
         destroy: (id: number) => api.delete<{ data: null }>(`/users/${id}`).then((r) => r.data.data),
         roleOptions: () => api.get<{ data: { items: { name: string; label: string }[] } }>('/users/role-options').then((r) => r.data.data.items),
+    },
+    roles: {
+        index: () => api.get<{ data: AdminRole[] }>('/roles').then((r) => r.data.data),
+        update: (id: number, payload: Partial<AdminRoleInput>) =>
+            api.put<{ data: AdminRole }>(`/roles/${id}`, payload).then((r) => r.data.data),
+        toggleActive: (id: number) => api.patch<{ data: AdminRole }>(`/roles/${id}/active`).then((r) => r.data.data),
     },
     settings: {
         index: (schoolProfileId?: number | null) =>
@@ -125,6 +131,23 @@ export interface AdminUser {
     permissions: unknown[];
     created_at: string;
     updated_at: string;
+}
+
+export interface AdminRole {
+    id: number;
+    name: string;
+    label: string;
+    description: string | null;
+    guard_name: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AdminRoleInput {
+    label?: string;
+    description?: string;
+    is_active?: boolean;
 }
 
 export interface UserInput {

@@ -49,6 +49,7 @@ use App\Models\StudentDocument;
 use App\Models\StudentSubjectEnrollment;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
+use App\Models\SubscriptionSetting;
 use App\Models\SystemSetting;
 use App\Models\Teacher;
 use App\Models\TeacherAssignment;
@@ -122,6 +123,7 @@ class SchoolScopingServiceProvider extends ServiceProvider
         Subject::class,
         SubjectOffering::class,
         StudentSubjectEnrollment::class,
+        SubscriptionSetting::class,
         SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,
@@ -179,6 +181,7 @@ class SchoolScopingServiceProvider extends ServiceProvider
         Subject::class,
         SubjectOffering::class,
         StudentSubjectEnrollment::class,
+        SubscriptionSetting::class,
         SystemSetting::class,
         Teacher::class,
         TeacherAssignment::class,

@@ -131,7 +131,10 @@ class PlatformSubscriptionTest extends TestCase
     {
         $this->actingAs($this->platformAdmin(), 'sanctum');
 
+        $school = SchoolProfile::factory()->create(['name' => 'Maple Grove Academy', 'is_active' => true]);
+
         $store = $this->postJson('/api/v1/platform/tenants', [
+            'school_profile_id' => $school->id,
             'name' => 'Maple Grove Academy',
         ])->assertCreated()->assertJsonPath('success', true);
 

@@ -100,6 +100,16 @@ class Student extends Model
     }
 
     /**
+     * The campuses this student is assigned to.
+     *
+     * @return BelongsToMany<Campus, $this>
+     */
+    public function campuses(): BelongsToMany
+    {
+        return $this->belongsToMany(Campus::class);
+    }
+
+    /**
      * The parents linked to this student.
      *
      * @return BelongsToMany<parent, $this>

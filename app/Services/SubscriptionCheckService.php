@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Enums\Platform\ExpirationBehavior;
+use App\Enums\Platform\InvoiceStatus;
 use App\Enums\Platform\SubscriptionHistoryAction;
 use App\Enums\Platform\SubscriptionStatus;
 use App\Events\SubscriptionExpired;
 use App\Events\SubscriptionExpiring;
 use App\Models\Subscription;
+use App\Models\SubscriptionHistory;
 use App\Models\SubscriptionInvoice;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;
@@ -86,6 +88,7 @@ class SubscriptionCheckService
         $today = Carbon::today();
 
         $expired = Subscription::query()
+            ->with('tenant:id,school_profile_id')
             ->where('status', SubscriptionStatus::ACTIVE->value)
             ->whereNotNull('expiration_date')
             ->whereDate('expiration_date', '<', $today->toDateString())
@@ -95,7 +98,7 @@ class SubscriptionCheckService
 
         foreach ($expired as $subscription) {
             $behavior = $subscription->expiration_behavior ?: ExpirationBehavior::GRACE_PERIOD->value;
-            $graceDays = (int) ($subscription->grace_days ?: (int) $this->settings->get('default_grace_days', 7));
+            $graceDays = (int) ($subscription->grace_days ?: (int) $this->settings->get('default_grace_days', 7, $subscription->tenant?->school_profile_id));
             $graceEnd = Carbon::parse($subscription->expiration_date)->addDays($graceDays);
 
             if ($behavior === ExpirationBehavior::GRACE_PERIOD->value && $today->lte($graceEnd)) {
@@ -169,7 +172,7 @@ class SubscriptionCheckService
     protected function flagOverdueInvoices(): int
     {
         $overdue = SubscriptionInvoice::query()
-            ->where('status', \App\Enums\Platform\InvoiceStatus::PENDING->value)
+            ->where('status', InvoiceStatus::PENDING->value)
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<', Carbon::today()->toDateString())
             ->update(['status' => 'overdue']);
@@ -203,20 +206,25 @@ class SubscriptionCheckService
      */
     protected function dispatchExpiringNotices(): int
     {
-        $noticeDays = (int) $this->settings->get('expiring_notice_days', 30);
         $today = Carbon::today();
 
         $expiring = Subscription::query()
+            ->with('tenant:id,school_profile_id')
             ->where('status', SubscriptionStatus::ACTIVE->value)
             ->whereNotNull('expiration_date')
             ->whereDate('expiration_date', '>=', $today->toDateString())
-            ->whereDate('expiration_date', '<=', $today->copy()->addDays($noticeDays)->toDateString())
             ->get();
 
         $count = 0;
 
         foreach ($expiring as $subscription) {
-            $alreadyNotified = \App\Models\SubscriptionHistory::query()
+            $noticeDays = (int) $this->settings->get('expiring_notice_days', 30, $subscription->tenant?->school_profile_id);
+
+            if ($subscription->expiration_date?->toDateString() > $today->copy()->addDays($noticeDays)->toDateString()) {
+                continue;
+            }
+
+            $alreadyNotified = SubscriptionHistory::query()
                 ->where('subscription_id', $subscription->id)
                 ->where('action', 'renewal_reminder')
                 ->whereDate('created_at', $today->toDateString())

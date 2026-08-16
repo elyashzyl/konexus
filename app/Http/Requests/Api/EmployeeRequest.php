@@ -44,6 +44,8 @@ class EmployeeRequest extends FormRequest
             'date_hired' => ['nullable', 'date'],
             'status' => ['nullable', 'string', 'max:50'],
             'is_active' => ['sometimes', 'boolean'],
+            'campus_ids' => ['sometimes', 'array'],
+            'campus_ids.*' => ['integer', 'exists:campuses,id'],
         ];
     }
 }

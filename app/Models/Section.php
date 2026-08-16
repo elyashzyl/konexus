@@ -21,6 +21,7 @@ class Section extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'grade_level_id',
         'name',
         'code',
@@ -51,6 +52,26 @@ class Section extends Model
     public function gradeLevel(): BelongsTo
     {
         return $this->belongsTo(GradeLevel::class);
+    }
+
+    /**
+     * The campus this section belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this section belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

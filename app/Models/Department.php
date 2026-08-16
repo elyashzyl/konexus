@@ -22,6 +22,7 @@ class Department extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'name',
         'code',
         'head_user_id',
@@ -49,6 +50,26 @@ class Department extends Model
     public function head(): BelongsTo
     {
         return $this->belongsTo(User::class, 'head_user_id');
+    }
+
+    /**
+     * The campus this department belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this department belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

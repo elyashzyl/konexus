@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -131,12 +132,15 @@ class UserManagementService
     }
 
     /**
-     * All assignable roles.
+     * All assignable roles (active roles only).
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, Role>
+     * @return Collection<int, Role>
      */
     public function roles()
     {
-        return Role::orderBy('name')->get();
+        return Role::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\BuildingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -21,6 +22,7 @@ class Building extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'name',
         'code',
         'description',
@@ -37,6 +39,26 @@ class Building extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * The campus this building belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this building belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

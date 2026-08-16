@@ -84,6 +84,8 @@ class StudentRequest extends FormRequest
             'parent_ids.*' => ['integer', 'exists:parents,id'],
             'guardian_ids' => ['nullable', 'array'],
             'guardian_ids.*' => ['integer', 'exists:guardians,id'],
+            'campus_ids' => ['sometimes', 'array'],
+            'campus_ids.*' => ['integer', 'exists:campuses,id'],
 
             'is_active' => ['sometimes', 'boolean'],
         ];

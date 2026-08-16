@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Student;
 use App\Repositories\Contracts\RepositoryInterface;
 use App\Repositories\Contracts\StudentRepositoryInterface;
+use App\Support\CampusContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -45,7 +47,7 @@ class StudentService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['parents', 'guardians'];
+    protected array $with = ['parents', 'guardians', 'campuses'];
 
     protected string $defaultSortBy = 'last_name';
 
@@ -71,6 +73,7 @@ class StudentService extends CrudService
 
         $student = $this->repository()->create($data);
 
+        $this->syncCampuses($student, $data['campus_ids'] ?? null);
         $this->syncRelations($student, $data);
 
         return $student->load($this->with);
@@ -85,6 +88,10 @@ class StudentService extends CrudService
     public function update(Model $model, array $data): Model
     {
         $student = $this->repository()->update($model, $data);
+
+        if (array_key_exists('campus_ids', $data)) {
+            $this->syncCampuses($student, $data['campus_ids']);
+        }
 
         $this->syncRelations($student, $data);
 
@@ -113,6 +120,65 @@ class StudentService extends CrudService
         } while ($this->repo->findByStudentNumber($number) !== null);
 
         return $number;
+    }
+
+    /**
+     * Restrict student listings to the active campus when one is selected.
+     *
+     * @param  Builder<Student>  $query
+     */
+    protected function applyPeopleCampusScope(Builder $query): void
+    {
+        $campusId = CampusContext::id();
+
+        if ($campusId === null) {
+            return;
+        }
+
+        $query->whereHas('campuses', fn (Builder $q) => $q->whereKey($campusId));
+    }
+
+    /**
+     * Sync the campuses a student belongs to, defaulting to the active
+     * campus when the payload does not specify any.
+     *
+     * @param  array<int, int>|int|string|null  $campusIds
+     */
+    private function syncCampuses(Student $student, array|int|string|null $campusIds): void
+    {
+        $ids = $this->normalizeCampusIds($campusIds);
+
+        if ($ids === null) {
+            $activeCampusId = CampusContext::id();
+
+            if ($activeCampusId !== null) {
+                $ids = [$activeCampusId];
+            }
+        }
+
+        if ($ids !== null) {
+            $student->campuses()->sync($ids);
+        }
+    }
+
+    /**
+     * Normalize a campus_ids payload into a list of integer ids, or null when
+     * the payload is absent or empty.
+     *
+     * @param  array<int, int>|int|string|null  $campusIds
+     * @return list<int>|null
+     */
+    private function normalizeCampusIds(array|int|string|null $campusIds): ?array
+    {
+        if (is_array($campusIds)) {
+            $ids = array_values(array_map('intval', $campusIds));
+        } elseif (is_numeric($campusIds)) {
+            $ids = [(int) $campusIds];
+        } else {
+            return null;
+        }
+
+        return $ids === [] ? null : $ids;
     }
 
     /**

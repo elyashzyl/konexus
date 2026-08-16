@@ -195,6 +195,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     Route::middleware(['auth:sanctum', 'campus.workspace'])->group(function () use ($crudRoutes, $peopleRoutes): void {
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
 
+        // Role management (super administrators only). Registered after the
+        // public catalog so `catalog` is never swallowed by `{id}`.
+        Route::prefix('roles')->name('roles.')->middleware('roles:super-administrator')->group(function (): void {
+            Route::put('{id}', [RoleController::class, 'update'])->name('update');
+            Route::patch('{id}/active', [RoleController::class, 'toggleActive'])->name('toggle-active');
+        });
+
         Route::get('workspaces', [CampusWorkspaceController::class, 'index'])->name('workspaces.index');
         Route::put('workspaces/active', [CampusWorkspaceController::class, 'select'])->name('workspaces.active');
 

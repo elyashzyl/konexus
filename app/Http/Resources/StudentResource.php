@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Campus;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -74,6 +75,10 @@ class StudentResource extends JsonResource
             'parents' => ParentResource::collection($this->whenLoaded('parents')),
             'guardians' => GuardianResource::collection($this->whenLoaded('guardians')),
             'activities' => ActivityResource::collection($this->whenLoaded('activities')),
+            'campuses' => $this->whenLoaded('campuses', fn () => $this->campuses->map(fn (Campus $campus) => [
+                'id' => $campus->id,
+                'name' => $campus->name,
+            ])),
             'is_active' => $this->is_active,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\SchoolProfile;
 use App\Models\SubscriptionSetting;
 use App\Repositories\Contracts\RepositoryInterface;
 use App\Repositories\Contracts\SubscriptionSettingRepositoryInterface;
+use App\Support\SchoolContext;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Typed access to the configurable platform subscription settings. Every value
@@ -52,9 +55,11 @@ class SubscriptionSettingsService extends CrudService
     /**
      * Read a setting as a typed value.
      */
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $key, mixed $default = null, ?int $schoolProfileId = null): mixed
     {
-        $setting = SubscriptionSetting::query()->where('key', $key)->first();
+        $schoolProfileId = $this->resolveSchoolId($schoolProfileId);
+
+        $setting = $this->settingQuery($key, $schoolProfileId)->first();
 
         return $setting ? $setting->typedValue() : $default;
     }
@@ -62,30 +67,40 @@ class SubscriptionSettingsService extends CrudService
     /**
      * Set a setting value, inferring its type from the known defaults.
      */
-    public function set(string $key, mixed $value, ?string $type = null, ?string $group = null): SubscriptionSetting
+    public function set(string $key, mixed $value, ?string $type = null, ?string $group = null, ?int $schoolProfileId = null): SubscriptionSetting
     {
+        $schoolProfileId = $this->resolveSchoolId($schoolProfileId);
         $known = self::DEFAULTS[$key] ?? null;
         $type ??= $known['type'] ?? $this->inferType($value);
 
-        return SubscriptionSetting::query()->updateOrCreate(
-            ['key' => $key],
-            [
-                'value' => SubscriptionSetting::encode($type, $value),
-                'type' => $type,
-                'group' => $group ?? $known['group'] ?? 'general',
-                'description' => $known['description'] ?? null,
-            ]
-        );
+        $setting = $this->settingQuery($key, $schoolProfileId)->first();
+
+        if ($setting === null) {
+            $setting = new SubscriptionSetting(['key' => $key, 'school_profile_id' => $schoolProfileId]);
+        }
+
+        $setting->fill([
+            'value' => SubscriptionSetting::encode($type, $value),
+            'type' => $type,
+            'group' => $group ?? $known['group'] ?? 'general',
+            'description' => $known['description'] ?? null,
+        ])->save();
+
+        return $setting;
     }
 
     /**
-     * Every active setting grouped by group.
+     * Every active setting grouped by group for a school.
      *
      * @return array<string, array<int, array<string, mixed>>>
      */
-    public function grouped(): array
+    public function grouped(?int $schoolProfileId = null): array
     {
+        $schoolProfileId = $this->resolveSchoolId($schoolProfileId);
+
         return SubscriptionSetting::query()
+            ->when($schoolProfileId === null, fn ($query) => $query->whereNull('school_profile_id'))
+            ->when($schoolProfileId !== null, fn ($query) => $query->where('school_profile_id', $schoolProfileId))
             ->where('is_active', true)
             ->orderBy('key')
             ->get()
@@ -104,25 +119,66 @@ class SubscriptionSettingsService extends CrudService
     }
 
     /**
-     * Persist a batch of settings (key => value).
+     * Persist a batch of settings (key => value) for a school.
      *
      * @param  array<string, mixed>  $values
      */
-    public function bulkSet(array $values): void
+    public function bulkSet(array $values, ?int $schoolProfileId = null): void
     {
         foreach ($values as $key => $value) {
-            $this->set($key, $value);
+            $this->set($key, $value, null, null, $schoolProfileId);
         }
     }
 
     /**
-     * Seed the default settings (idempotent).
+     * Seed the default settings (idempotent) for a school.
      */
-    public function seedDefaults(): void
+    public function seedDefaults(?int $schoolProfileId = null): void
     {
         foreach (self::DEFAULTS as $key => $definition) {
-            $this->set($key, $definition['value'], $definition['type'], $definition['group']);
+            $this->set($key, $definition['value'], $definition['type'], $definition['group'], $schoolProfileId);
         }
+    }
+
+    /**
+     * The query scoped to a setting key and (possibly null) school.
+     *
+     * @return Builder<SubscriptionSetting>
+     */
+    protected function settingQuery(string $key, ?int $schoolProfileId)
+    {
+        return SubscriptionSetting::query()
+            ->where('key', $key)
+            ->when($schoolProfileId === null, fn ($query) => $query->whereNull('school_profile_id'))
+            ->when($schoolProfileId !== null, fn ($query) => $query->where('school_profile_id', $schoolProfileId));
+    }
+
+    /**
+     * Resolve the school a setting read/write applies to.
+     *
+     * When none is provided the currently authenticated user's school is used;
+     * unauthenticated contexts (scheduled jobs, seeding) fall back to the first
+     * active school. Null is returned when no school exists at all so legacy
+     * unassigned rows remain reachable.
+     */
+    protected function resolveSchoolId(?int $schoolProfileId): ?int
+    {
+        if ($schoolProfileId !== null) {
+            return $schoolProfileId;
+        }
+
+        $user = SchoolContext::user();
+
+        if ($user !== null && $user->school_profile_id !== null) {
+            return (int) $user->school_profile_id;
+        }
+
+        $fallback = SchoolProfile::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->value('id');
+
+        return $fallback !== null ? (int) $fallback : null;
     }
 
     /**

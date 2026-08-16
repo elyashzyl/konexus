@@ -2,6 +2,7 @@
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
+import SchoolSwitcher from '@/components/SchoolSwitcher.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { APP_ROUTES } from '@/constants/app';
@@ -109,6 +110,7 @@ const footerNavItems: NavItem[] = [
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
+            <SchoolSwitcher v-if="auth.can('super-administrator')" />
             <WorkspaceSwitcher />
         </SidebarHeader>
 

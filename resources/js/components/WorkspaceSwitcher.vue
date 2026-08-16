@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,6 +24,12 @@ const router = useRouter();
 const canManageCampuses = computed(() => auth.can('school-administrator') || auth.can('super-administrator'));
 const schoolName = computed(() => workspace.activeCampus?.school_profile?.name ?? auth.user?.school?.name ?? 'School workspace');
 const activeCampusId = computed(() => String(workspace.activeCampus?.id ?? ''));
+const activeSchoolId = computed(() => workspace.activeCampus?.school_profile_id ?? auth.user?.school_profile_id ?? null);
+const schoolCampuses = computed(() =>
+    activeSchoolId.value === null
+        ? workspace.campuses
+        : workspace.campuses.filter((campus) => campus.school_profile_id === activeSchoolId.value),
+);
 
 async function changeWorkspace(value: string): Promise<void> {
     const campusId = Number(value);
@@ -69,12 +74,12 @@ onMounted(() => {
         <DropdownMenuContent align="start" class="w-80 rounded-xl p-2">
             <DropdownMenuLabel class="px-2 py-2">
                 <p class="text-sm font-semibold">Campus workspace</p>
-                <p class="mt-0.5 text-xs font-normal text-muted-foreground">Data, rosters, and academic operations follow the selected campus.</p>
+                <p class="mt-0.5 text-xs font-normal text-muted-foreground">Campuses belong to {{ schoolName }}. Switch school to see another school's campuses.</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
             <DropdownMenuRadioGroup :model-value="activeCampusId" @update:model-value="changeWorkspace">
-                <DropdownMenuRadioItem v-for="campus in workspace.campuses" :key="campus.id" :value="String(campus.id)" class="my-1 min-h-14 rounded-lg py-2.5 pl-9">
+                <DropdownMenuRadioItem v-for="campus in schoolCampuses" :key="campus.id" :value="String(campus.id)" class="my-1 min-h-14 rounded-lg py-2.5 pl-9">
                     <span class="min-w-0">
                         <span class="flex items-center gap-2">
                             <span class="truncate font-medium">{{ campus.name }}</span>
@@ -87,6 +92,9 @@ onMounted(() => {
                     </span>
                     <Check v-if="campus.id === workspace.activeCampus?.id" class="ml-auto size-4 text-primary" />
                 </DropdownMenuRadioItem>
+                <div v-if="schoolCampuses.length === 0" class="px-3 py-6 text-center text-xs text-muted-foreground">
+                    No campuses configured for this school yet.
+                </div>
             </DropdownMenuRadioGroup>
 
             <template v-if="canManageCampuses">

@@ -22,6 +22,7 @@ class SubscriptionSettingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'school_profile_id' => ['nullable', 'integer', 'exists:school_profiles,id'],
             'key' => ['required', 'string', 'max:255'],
             'value' => ['nullable'],
             'type' => ['sometimes', 'in:string,boolean,integer,decimal,json'],

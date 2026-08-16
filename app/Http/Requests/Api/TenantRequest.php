@@ -24,7 +24,7 @@ class TenantRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'school_profile_id' => ['nullable', 'integer', 'exists:school_profiles,id'],
+            'school_profile_id' => [$this->route('id') ? 'nullable' : 'required', 'integer', 'exists:school_profiles,id'],
             'code' => ['nullable', 'string', 'max:50', Rule::unique('tenants', 'code')->withoutTrashed()->ignore($this->route('id'))],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::enum(TenantStatus::class)],

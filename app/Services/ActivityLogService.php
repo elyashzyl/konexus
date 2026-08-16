@@ -111,6 +111,15 @@ class ActivityLogService
         $total = (clone $base)->count();
         $today = (clone $base)->whereDate('created_at', today())->count();
 
+        $uniqueCausers = (clone $base)->whereNotNull('causer_id')->distinct()->count('causer_id');
+
+        $logNames = (clone $base)
+            ->select('log_name', DB::raw('count(*) as total'))
+            ->groupBy('log_name')
+            ->orderBy('log_name')
+            ->get()
+            ->map(fn ($row) => ['log_name' => $row->log_name, 'total' => (int) $row->total]);
+
         $topModules = (clone $base)
             ->select('log_name', DB::raw('count(*) as total'))
             ->groupBy('log_name')
@@ -130,6 +139,8 @@ class ActivityLogService
         return [
             'total' => $total,
             'today' => $today,
+            'unique_causers' => $uniqueCausers,
+            'log_names' => $logNames,
             'top_modules' => $topModules,
             'events' => $events,
         ];

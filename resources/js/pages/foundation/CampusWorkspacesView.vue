@@ -13,7 +13,7 @@ import api, { extractError, extractFieldErrors } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useWorkspaceStore } from '@/stores/workspace';
 import type { CampusWorkspace } from '@/types';
-import { Building2, CheckCircle2, ChevronRight, MapPin, Plus, Save, Settings2, ShieldCheck, X } from 'lucide-vue-next';
+import { Building2, CheckCircle2, ChevronRight, MapPin, Plus, Save, Settings2, ShieldCheck, Trash2, X } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -32,6 +32,7 @@ const campuses = ref<CampusWorkspace[]>([]);
 const schoolProfiles = ref<SchoolOption[]>([]);
 const loading = ref(true);
 const saving = ref(false);
+const deletingId = ref<number | null>(null);
 const showCreate = ref(false);
 const fieldErrors = ref<Record<string, string[]>>({});
 
@@ -112,6 +113,28 @@ async function openWorkspace(campus: CampusWorkspace): Promise<void> {
         await router.push('/dashboard');
     } catch {
         toast.error('We could not change the campus workspace.');
+    }
+}
+
+async function deleteCampus(campus: CampusWorkspace): Promise<void> {
+    if (campus.id === workspace.activeCampus?.id || deletingId.value) {
+        return;
+    }
+
+    if (!window.confirm(`Delete campus "${campus.name}"? Its workspace and records will be archived and can be restored later.`)) {
+        return;
+    }
+
+    deletingId.value = campus.id;
+
+    try {
+        await api.delete(`/campuses/${campus.id}`);
+        toast.success('Campus workspace deleted.');
+        await Promise.all([loadCampuses(), workspace.initialize(true)]);
+    } catch (error) {
+        toast.error(extractError(error));
+    } finally {
+        deletingId.value = null;
     }
 }
 
@@ -231,10 +254,22 @@ onMounted(async () => {
                             <p class="flex min-h-10 items-start gap-2 text-sm text-muted-foreground"><MapPin class="mt-0.5 size-4 shrink-0 text-primary/80" />{{ campus.address || 'Address not yet configured' }}</p>
                             <div class="flex items-center justify-between gap-3 border-t pt-3">
                                 <span class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{ campus.code || 'No code' }}</span>
-                                <Button size="sm" variant="ghost" :disabled="!campus.is_active || campus.id === workspace.activeCampus?.id" @click="openWorkspace(campus)">
-                                    {{ campus.id === workspace.activeCampus?.id ? 'Current' : 'Open' }}
-                                    <ChevronRight class="size-4" />
-                                </Button>
+                                <div class="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        class="text-muted-foreground hover:text-destructive"
+                                        :disabled="deletingId === campus.id || campus.id === workspace.activeCampus?.id"
+                                        :title="campus.id === workspace.activeCampus?.id ? 'Switch away before deleting this campus' : 'Delete campus'"
+                                        @click.stop="deleteCampus(campus)"
+                                    >
+                                        <Trash2 class="size-4" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" :disabled="!campus.is_active || campus.id === workspace.activeCampus?.id" @click="openWorkspace(campus)">
+                                        {{ campus.id === workspace.activeCampus?.id ? 'Current' : 'Open' }}
+                                        <ChevronRight class="size-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -295,7 +330,7 @@ onMounted(async () => {
                             </div>
                             <div class="flex items-center justify-between rounded-lg border p-3.5 sm:mt-6">
                                 <div><Label for="campus-active">Open for operations</Label><p class="text-xs text-muted-foreground">Make this workspace selectable now.</p></div>
-                                <Switch id="campus-active" v-model="form.is_active" />
+                                <Switch id="campus-active" :checked="form.is_active" @update:checked="form.is_active = $event" />
                             </div>
                             <div class="flex justify-end gap-2 border-t pt-4 sm:col-span-2">
                                 <Button type="button" variant="outline" @click="showCreate = false">Cancel</Button>

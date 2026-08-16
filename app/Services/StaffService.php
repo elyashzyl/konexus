@@ -6,6 +6,8 @@ use App\Models\Staff;
 use App\Repositories\Contracts\EmployeeRepositoryInterface;
 use App\Repositories\Contracts\RepositoryInterface;
 use App\Repositories\Contracts\StaffRepositoryInterface;
+use App\Support\CampusContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class StaffService extends CrudService
@@ -30,7 +32,7 @@ class StaffService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['employee', 'employee.department'];
+    protected array $with = ['employee', 'employee.campuses', 'employee.department'];
 
     public function __construct(
         private readonly StaffRepositoryInterface $repo,
@@ -47,6 +49,22 @@ class StaffService extends CrudService
     }
 
     /**
+     * Restrict staff listings to the active campus when one is selected.
+     *
+     * @param  Builder<Staff>  $query
+     */
+    protected function applyPeopleCampusScope(Builder $query): void
+    {
+        $campusId = CampusContext::id();
+
+        if ($campusId === null) {
+            return;
+        }
+
+        $query->whereHas('employee.campuses', fn (Builder $q) => $q->whereKey($campusId));
+    }
+
+    /**
      * Create a staff profile, resolving (or creating) the backing employee.
      *
      * @param  array<string, mixed>  $data
@@ -58,6 +76,8 @@ class StaffService extends CrudService
 
         /** @var Staff $staff */
         $staff = $this->repository()->create($data);
+
+        $this->syncEmployeeCampuses($staff, $data['campus_ids'] ?? null);
 
         return $staff->load($this->with);
     }
@@ -77,7 +97,38 @@ class StaffService extends CrudService
             $staff->forceFill(['employee_id' => (int) $data['employee_id']])->save();
         }
 
+        if (array_key_exists('campus_ids', $data)) {
+            $this->syncEmployeeCampuses($staff, $data['campus_ids']);
+        }
+
         return $staff->load($this->with);
+    }
+
+    /**
+     * Sync the campuses of the employee backing the given staff profile.
+     *
+     * @param  array<int, int>|int|string|null  $campusIds
+     */
+    private function syncEmployeeCampuses(Staff $staff, array|int|string|null $campusIds): void
+    {
+        $employee = $staff->employee;
+
+        if ($employee === null) {
+            return;
+        }
+
+        if (is_array($campusIds)) {
+            $ids = array_values(array_map('intval', $campusIds));
+        } elseif (is_numeric($campusIds)) {
+            $ids = [(int) $campusIds];
+        } else {
+            $activeCampusId = CampusContext::id();
+            $ids = $activeCampusId !== null ? [$activeCampusId] : null;
+        }
+
+        if ($ids !== null) {
+            $employee->campuses()->sync($ids);
+        }
     }
 
     /**

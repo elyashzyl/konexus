@@ -6,6 +6,8 @@ use App\Models\Teacher;
 use App\Repositories\Contracts\EmployeeRepositoryInterface;
 use App\Repositories\Contracts\RepositoryInterface;
 use App\Repositories\Contracts\TeacherRepositoryInterface;
+use App\Support\CampusContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class TeacherService extends CrudService
@@ -33,7 +35,7 @@ class TeacherService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['employee', 'advisoryClass', 'department'];
+    protected array $with = ['employee', 'employee.campuses', 'advisoryClass', 'department'];
 
     public function __construct(
         private readonly TeacherRepositoryInterface $repo,
@@ -50,6 +52,22 @@ class TeacherService extends CrudService
     }
 
     /**
+     * Restrict teacher listings to the active campus when one is selected.
+     *
+     * @param  Builder<Teacher>  $query
+     */
+    protected function applyPeopleCampusScope(Builder $query): void
+    {
+        $campusId = CampusContext::id();
+
+        if ($campusId === null) {
+            return;
+        }
+
+        $query->whereHas('employee.campuses', fn (Builder $q) => $q->whereKey($campusId));
+    }
+
+    /**
      * Create a teacher profile, resolving (or creating) the backing employee.
      *
      * @param  array<string, mixed>  $data
@@ -61,6 +79,8 @@ class TeacherService extends CrudService
 
         /** @var Teacher $teacher */
         $teacher = $this->repository()->create($data);
+
+        $this->syncEmployeeCampuses($teacher, $data['campus_ids'] ?? null);
 
         return $teacher->load($this->with);
     }
@@ -80,7 +100,38 @@ class TeacherService extends CrudService
             $teacher->forceFill(['employee_id' => (int) $data['employee_id']])->save();
         }
 
+        if (array_key_exists('campus_ids', $data)) {
+            $this->syncEmployeeCampuses($teacher, $data['campus_ids']);
+        }
+
         return $teacher->load($this->with);
+    }
+
+    /**
+     * Sync the campuses of the employee backing the given teacher.
+     *
+     * @param  array<int, int>|int|string|null  $campusIds
+     */
+    private function syncEmployeeCampuses(Teacher $teacher, array|int|string|null $campusIds): void
+    {
+        $employee = $teacher->employee;
+
+        if ($employee === null) {
+            return;
+        }
+
+        if (is_array($campusIds)) {
+            $ids = array_values(array_map('intval', $campusIds));
+        } elseif (is_numeric($campusIds)) {
+            $ids = [(int) $campusIds];
+        } else {
+            $activeCampusId = CampusContext::id();
+            $ids = $activeCampusId !== null ? [$activeCampusId] : null;
+        }
+
+        if ($ids !== null) {
+            $employee->campuses()->sync($ids);
+        }
     }
 
     /**

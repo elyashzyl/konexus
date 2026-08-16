@@ -9,6 +9,7 @@ use App\Models\SubscriptionUsage;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -66,7 +67,7 @@ class UsageService
     /**
      * The usage trend of the last N snapshots.
      *
-     * @return \Illuminate\Support\Collection<int, SubscriptionUsage>
+     * @return Collection<int, SubscriptionUsage>
      */
     public function trend(Tenant $tenant, int $months = 6)
     {
@@ -116,7 +117,7 @@ class UsageService
             $used = $usageMap[$key] ?? 0;
             $percent = (int) round(($used / $limit) * 100);
 
-            $thresholds = $this->featureAccess->settings()->get('usage_warning_thresholds', [80, 90, 100]);
+            $thresholds = $this->featureAccess->settings()->get('usage_warning_thresholds', [80, 90, 100], $tenant->school_profile_id);
 
             foreach ((array) $thresholds as $threshold) {
                 if ($percent >= (int) $threshold) {

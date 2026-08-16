@@ -41,6 +41,8 @@ class TeacherRequest extends FormRequest
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'specialization' => ['nullable', 'string', 'max:255'],
             'academic_load' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'campus_ids' => ['sometimes', 'array'],
+            'campus_ids.*' => ['integer', 'exists:campuses,id'],
         ];
     }
 }

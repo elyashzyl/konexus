@@ -7,6 +7,7 @@ use App\Enums\Platform\ExpirationBehavior;
 use App\Enums\Platform\SubscriptionHistoryAction;
 use App\Enums\Platform\SubscriptionStatus;
 use App\Exceptions\ApiException;
+use App\Http\Requests\Api\IndexRequest;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
@@ -72,7 +73,7 @@ class SubscriptionService extends CrudService
      *
      * @return array<string, mixed>
      */
-    protected function filters(\App\Http\Requests\Api\IndexRequest $request): array
+    protected function filters(IndexRequest $request): array
     {
         $filters = parent::filters($request);
 
@@ -96,8 +97,9 @@ class SubscriptionService extends CrudService
         $data['start_date'] = $data['start_date'] ?? Carbon::today()->toDateString();
         $data['status'] = $data['status'] ?? SubscriptionStatus::PENDING->value;
         $data['billing_cycle'] = $data['billing_cycle'] ?? BillingCycle::MONTHLY->value;
-        $data['grace_days'] = $data['grace_days'] ?? $this->settings->get('default_grace_days', 7);
-        $data['expiration_behavior'] = $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value);
+        $schoolId = isset($data['tenant_id']) ? (int) Tenant::query()->whereKey($data['tenant_id'])->value('school_profile_id') : null;
+        $data['grace_days'] = $data['grace_days'] ?? $this->settings->get('default_grace_days', 7, $schoolId);
+        $data['expiration_behavior'] = $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value, $schoolId);
         $data['expiration_date'] = $data['expiration_date']
             ?? $this->computeExpiration($data['start_date'], $data['billing_cycle']);
 
@@ -147,8 +149,8 @@ class SubscriptionService extends CrudService
                 'billing_cycle' => $cycle,
                 'amount' => $plan->priceForCycle($cycle),
                 'auto_renewal' => (bool) ($data['auto_renewal'] ?? true),
-                'grace_days' => (int) ($data['grace_days'] ?? $this->settings->get('default_grace_days', 7)),
-                'expiration_behavior' => $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value),
+                'grace_days' => (int) ($data['grace_days'] ?? $this->settings->get('default_grace_days', 7, $tenant->school_profile_id)),
+                'expiration_behavior' => $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value, $tenant->school_profile_id),
                 'notes' => $data['notes'] ?? null,
             ];
 
@@ -174,15 +176,15 @@ class SubscriptionService extends CrudService
             $this->audit->recordForSubscription($subscription, $useTrial
                 ? SubscriptionHistoryAction::TRIAL_STARTED
                 : SubscriptionHistoryAction::CREATED, [
-                'description' => $useTrial
-                    ? "Trial started for plan {$plan->name}."
-                    : "Subscription to plan {$plan->name} started.",
-                'new_value' => [
-                    'plan_id' => $plan->id,
-                    'trial_ends_at' => $subscription->trial_ends_at?->toDateString(),
-                    'expiration_date' => $subscription->expiration_date?->toDateString(),
-                ],
-            ]);
+                    'description' => $useTrial
+                        ? "Trial started for plan {$plan->name}."
+                        : "Subscription to plan {$plan->name} started.",
+                    'new_value' => [
+                        'plan_id' => $plan->id,
+                        'trial_ends_at' => $subscription->trial_ends_at?->toDateString(),
+                        'expiration_date' => $subscription->expiration_date?->toDateString(),
+                    ],
+                ]);
 
             $this->licenseService->issueLicense($tenant, $plan, [
                 'start_date' => $subscription->start_date->toDateString(),
@@ -227,8 +229,8 @@ class SubscriptionService extends CrudService
                 'start_date' => $start->toDateString(),
                 'expiration_date' => $data['expiration_date'] ?? $this->computeExpiration($start->toDateString(), $cycle),
                 'auto_renewal' => (bool) ($data['auto_renewal'] ?? false),
-                'grace_days' => (int) ($data['grace_days'] ?? $this->settings->get('default_grace_days', 7)),
-                'expiration_behavior' => $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value),
+                'grace_days' => (int) ($data['grace_days'] ?? $this->settings->get('default_grace_days', 7, $tenant->school_profile_id)),
+                'expiration_behavior' => $data['expiration_behavior'] ?? $this->settings->get('default_expiration_behavior', ExpirationBehavior::GRACE_PERIOD->value, $tenant->school_profile_id),
                 'notes' => $data['notes'] ?? null,
             ];
 
@@ -468,9 +470,9 @@ class SubscriptionService extends CrudService
         $this->audit->recordForSubscription($subscription, $enabled
             ? SubscriptionHistoryAction::FEATURE_ENABLED
             : SubscriptionHistoryAction::FEATURE_DISABLED, [
-            'description' => ($enabled ? 'Enabled' : 'Disabled')." feature {$featureCode}.",
-            'new_value' => ['feature_code' => $featureCode, 'is_enabled' => $enabled],
-        ]);
+                'description' => ($enabled ? 'Enabled' : 'Disabled')." feature {$featureCode}.",
+                'new_value' => ['feature_code' => $featureCode, 'is_enabled' => $enabled],
+            ]);
 
         return $subscription;
     }

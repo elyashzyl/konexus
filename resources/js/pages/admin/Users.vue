@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractError, extractFieldErrors } from '@/lib/api';
 import { loadOptions } from '@/lib/crud';
-import { platformApi, type AdminUser, type UserInput } from '@/lib/platformApi';
+import { platformApi, type AdminRole, type AdminUser, type UserInput } from '@/lib/platformApi';
 import { homePathForRoles } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
 import type { CrudOption } from '@/types/crud';
@@ -33,7 +33,9 @@ const page = ref(1);
 const perPage = 15;
 const search = ref('');
 const roleFilter = ref<'all' | string>('all');
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all');
 const roleOptions = ref<{ name: string; label: string }[]>([]);
+const roles = ref<AdminRole[]>([]);
 const schools = ref<CrudOption[]>([]);
 const fieldErrors = ref<Record<string, string[]>>({});
 
@@ -50,9 +52,14 @@ const isPlatformActor = computed(
 
 onMounted(async () => {
     try {
-        const [roles, schoolOptions] = await Promise.all([platformApi.users.roleOptions(), loadOptions('school-profiles')]);
-        roleOptions.value = roles;
+        const [roleOpts, schoolOptions, roleList] = await Promise.all([
+            platformApi.users.roleOptions(),
+            loadOptions('school-profiles'),
+            platformApi.roles.index(),
+        ]);
+        roleOptions.value = roleOpts;
         schools.value = schoolOptions;
+        roles.value = roleList;
     } catch (error) {
         toast.error(extractError(error));
     }
@@ -67,6 +74,7 @@ async function refresh(): Promise<void> {
             per_page: perPage,
             search: search.value || undefined,
             role: roleFilter.value === 'all' ? undefined : roleFilter.value,
+            status: statusFilter.value === 'all' ? undefined : statusFilter.value,
         });
         items.value = data.items;
         total.value = data.pagination.total;
@@ -140,6 +148,16 @@ async function toggleActive(user: AdminUser): Promise<void> {
         await platformApi.users.toggleActive(user.id);
         toast.success(user.is_active ? 'User deactivated.' : 'User activated.');
         await refresh();
+    } catch (error) {
+        toast.error(extractError(error));
+    }
+}
+
+async function toggleRoleActive(role: AdminRole): Promise<void> {
+    try {
+        await platformApi.roles.toggleActive(role.id);
+        toast.success(role.is_active ? `Role "${role.label}" deactivated.` : `Role "${role.label}" activated.`);
+        roles.value = await platformApi.roles.index();
     } catch (error) {
         toast.error(extractError(error));
     }
@@ -242,6 +260,25 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                             <SelectItem v-for="role in roleOptions" :key="role.name" :value="role.name">{{ role.label }}</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Select
+                        :model-value="statusFilter"
+                        @update:model-value="
+                            (v: string) => {
+                                statusFilter = v as 'all' | 'active' | 'inactive';
+                                page = 1;
+                                refresh();
+                            }
+                        "
+                    >
+                        <SelectTrigger class="w-40">
+                            <SelectValue :placeholder="statusFilter === 'all' ? 'All statuses' : statusFilter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All statuses</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -297,7 +334,7 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Switch :model-value="user.is_active" @update:model-value="toggleActive(user)" aria-label="Toggle active" />
+                                        <Switch :checked="user.is_active" @update:checked="toggleActive(user)" aria-label="Toggle active" />
                                     </TableCell>
                                     <TableCell class="text-xs text-muted-foreground">
                                         {{ user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'Never' }}
@@ -350,6 +387,40 @@ const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
                                 "
                                 >Next</Button
                             >
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
+            <section class="portal-rise mt-6" style="animation-delay: 200ms">
+                <Card class="relative overflow-hidden border-border/60 bg-card/60">
+                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+                    <CardHeader class="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">System Roles</CardTitle>
+                            <p class="mt-1 text-sm text-muted-foreground">Enable or disable the built-in roles. Inactive roles cannot be assigned.</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            <div
+                                v-for="role in roles"
+                                :key="role.id"
+                                class="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-4 py-3"
+                            >
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="truncate font-medium">{{ role.label }}</span>
+                                        <Badge v-if="!role.is_active" variant="outline">Inactive</Badge>
+                                    </div>
+                                    <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ role.name }}</p>
+                                </div>
+                                <Switch
+                                    :checked="role.is_active"
+                                    @update:checked="toggleRoleActive(role)"
+                                    :aria-label="`Toggle ${role.label}`"
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

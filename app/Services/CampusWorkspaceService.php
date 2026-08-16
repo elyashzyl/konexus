@@ -11,6 +11,8 @@ use App\Models\ParentGuardian;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\TeacherAssignment;
+use App\Models\Scopes\CampusScope;
+use App\Models\Scopes\SchoolScope;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -24,7 +26,8 @@ class CampusWorkspaceService
         $campusIds = $this->portalCampusIds($user);
 
         return Campus::query()
-            ->withoutGlobalScopes()
+            ->withoutGlobalScope(SchoolScope::class)
+            ->withoutGlobalScope(CampusScope::class)
             ->with('schoolProfile:id,name,short_name')
             ->where('is_active', true)
             ->when(! $this->isPlatformOperator($user), fn ($query) => $query->where('school_profile_id', $user->school_profile_id))

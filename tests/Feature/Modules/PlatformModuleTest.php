@@ -210,7 +210,16 @@ class PlatformModuleTest extends TestCase
         $this->actingAs($admin)
             ->getJson('/api/v1/activity-logs/stats')
             ->assertOk()
-            ->assertJsonStructure(['data' => ['total', 'today']]);
+            ->assertJsonStructure([
+                'data' => [
+                    'total',
+                    'today',
+                    'unique_causers',
+                    'log_names',
+                    'top_modules',
+                    'events',
+                ],
+            ]);
     }
 
     // ─────────────────────────────────────────

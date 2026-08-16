@@ -22,6 +22,7 @@ class RoleResource extends JsonResource
             'label' => $this->label,
             'description' => $this->description,
             'guard_name' => $this->guard_name,
+            'is_active' => $this->is_active,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

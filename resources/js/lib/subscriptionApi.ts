@@ -387,8 +387,18 @@ export const subscriptionApi = {
     },
 
     settings: {
-        grouped: () => api.get<{ data: Record<string, SubscriptionSettingItem[]> }>('/platform/settings/grouped').then((r) => r.data.data),
-        bulk: (settings: Record<string, string | number | boolean | number[] | null>) =>
-            api.put<{ data: Record<string, SubscriptionSettingItem[]> }>('/platform/settings/bulk', { settings }).then((r) => r.data.data),
+        grouped: (schoolProfileId?: number | null) =>
+            api
+                .get<{ data: Record<string, SubscriptionSettingItem[]> }>('/platform/settings/grouped', {
+                    params: schoolProfileId ? { school_profile_id: schoolProfileId } : {},
+                })
+                .then((r) => r.data.data),
+        bulk: (settings: Record<string, string | number | boolean | number[] | null>, schoolProfileId?: number | null) =>
+            api
+                .put<{ data: Record<string, SubscriptionSettingItem[]> }>('/platform/settings/bulk', {
+                    settings,
+                    ...(schoolProfileId ? { school_profile_id: schoolProfileId } : {}),
+                })
+                .then((r) => r.data.data),
     },
 };

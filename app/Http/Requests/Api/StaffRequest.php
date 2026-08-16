@@ -34,6 +34,8 @@ class StaffRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'support_area' => ['nullable', 'string', 'max:100'],
+            'campus_ids' => ['sometimes', 'array'],
+            'campus_ids.*' => ['integer', 'exists:campuses,id'],
         ];
     }
 }
