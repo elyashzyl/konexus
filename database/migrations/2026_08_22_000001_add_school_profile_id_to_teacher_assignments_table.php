@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('teacher_assignments', 'school_profile_id')) {
+            return;
+        }
+
         Schema::table('teacher_assignments', function (Blueprint $table): void {
             $table->foreignId('school_profile_id')->nullable()->constrained('school_profiles')->nullOnDelete();
             $table->index('school_profile_id');

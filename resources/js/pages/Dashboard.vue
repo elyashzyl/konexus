@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import AdminPageHeader from '@/components/AdminPageHeader.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { STAFF_PORTALS } from '@/config/staffPortals';
+import { ROLE_HOME_PATHS } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
-import { ArrowUpRight, BarChart3, GraduationCap, Layers, ShieldCheck, Users } from 'lucide-vue-next';
+import { ArrowUpRight, BarChart3, GraduationCap, HeartHandshake, Layers, ShieldCheck, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 
@@ -22,6 +24,18 @@ const stats = [
     { title: 'Classes', value: '—', icon: Layers, href: '/admin/dashboard' },
     { title: 'Reports', value: '—', icon: BarChart3, href: '/admin/reports' },
 ];
+
+const portalLinks = computed(() => [
+    { title: 'Student Portal', description: 'Grades, schedule and enrollment history.', href: '/portal/student', icon: GraduationCap },
+    { title: 'Parent Portal', description: 'Linked children and family records.', href: '/portal/parent', icon: HeartHandshake },
+    { title: 'Teacher Portal', description: 'Classes, schedule and advisory rosters.', href: '/portal/teacher', icon: Users },
+    ...STAFF_PORTALS.map((portal) => ({
+        title: portal.label,
+        description: portal.description,
+        href: ROLE_HOME_PATHS[portal.role] ?? `/portal/staff/${portal.role}`,
+        icon: Users,
+    })),
+]);
 </script>
 
 <template>
@@ -128,6 +142,33 @@ const stats = [
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+            </section>
+
+            <section class="portal-rise mt-14" style="animation-delay: 240ms">
+                <div>
+                    <p class="text-[11px] font-medium tracking-[0.22em] text-primary uppercase">Portals</p>
+                    <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">Browse every portal</h2>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                        Preview the student, parent, teacher and staff workspaces from one place.
+                    </p>
+                </div>
+
+                <div class="portal-rise mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <RouterLink
+                        v-for="portal in portalLinks"
+                        :key="portal.href"
+                        :to="portal.href"
+                        class="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-6 transition-colors hover:border-primary/25"
+                    >
+                        <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+                        <div class="flex items-center justify-between">
+                            <component :is="portal.icon" class="size-5 text-primary" />
+                            <ArrowUpRight class="size-4 text-muted-foreground/50 transition-colors group-hover:text-primary" />
+                        </div>
+                        <p class="mt-5 font-display text-lg font-medium tracking-[-0.01em] text-foreground">{{ portal.title }}</p>
+                        <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ portal.description }}</p>
+                    </RouterLink>
                 </div>
             </section>
 

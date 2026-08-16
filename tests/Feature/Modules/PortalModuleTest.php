@@ -139,6 +139,22 @@ class PortalModuleTest extends TestCase
             ->assertOk();
     }
 
+    public function test_administrator_can_preview_teacher_portal_without_profile(): void
+    {
+        $user = $this->userWithRole(RoleEnum::SCHOOL_ADMINISTRATOR->roleName());
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/portal/teacher/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.stats.assignments', 0)
+            ->assertJsonPath('data.teacher.id', null);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/portal/teacher/assignments')
+            ->assertOk()
+            ->assertJsonPath('data.items', []);
+    }
+
     // ─────────────────────────────────────────
     // Notification hooks
     // ─────────────────────────────────────────

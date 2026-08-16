@@ -16,6 +16,8 @@ import {
     UserCog,
     Users,
 } from 'lucide-vue-next';
+import { STAFF_PORTALS } from '@/config/staffPortals';
+import { ROLE_HOME_PATHS } from '@/lib/roles';
 
 /**
  * The Part 8 platform navigation model.
@@ -39,7 +41,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         path: '/portal/student',
         icon: GraduationCap,
         description: 'Your profile, grades and schedule.',
-        roles: ['student'],
+        roles: ['student', 'super-administrator', 'school-administrator'],
     },
     {
         key: 'parent-portal',
@@ -47,7 +49,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         path: '/portal/parent',
         icon: HeartHandshake,
         description: 'Follow your children.',
-        roles: ['parent'],
+        roles: ['parent', 'super-administrator', 'school-administrator'],
     },
     {
         key: 'teacher-portal',
@@ -55,8 +57,16 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         path: '/portal/teacher',
         icon: Users,
         description: 'Your classes and schedule.',
-        roles: ['teacher', 'adviser'],
+        roles: ['teacher', 'adviser', 'super-administrator', 'school-administrator'],
     },
+    ...STAFF_PORTALS.map((portal) => ({
+        key: `staff-portal-${portal.role}`,
+        title: portal.label,
+        path: ROLE_HOME_PATHS[portal.role] ?? `/portal/staff/${portal.role}`,
+        icon: Users,
+        description: portal.description,
+        roles: [portal.role, 'super-administrator', 'school-administrator'],
+    })),
     { key: 'notifications', title: 'Notification Center', path: '/notifications', icon: Bell, description: 'Everything happening around you.' },
     {
         key: 'admin-dashboard',

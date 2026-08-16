@@ -21,6 +21,7 @@ class TeacherAssignment extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'school_profile_id',
         'academic_year_id',
         'academic_term_id',
         'campus_id',

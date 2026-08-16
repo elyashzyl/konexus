@@ -15,9 +15,9 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useInitials } from '@/composables/useInitials';
-import { staffPortalByRole } from '@/config/staffPortals';
+import { staffPortalByRole, STAFF_PORTALS } from '@/config/staffPortals';
 import { portalApi } from '@/lib/portalApi';
-import { ROLE_HOME_PATHS } from '@/lib/roles';
+import { isAdmin, ROLE_HOME_PATHS } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
 import type { ChildSummary } from '@/types/platform';
 import {
@@ -73,34 +73,79 @@ onMounted(async () => {
         } else if (props.role === 'teacher') {
             const data = await portalApi.teacher.dashboard();
             identity.value = {
-                name: data.teacher.name,
-                subline: data.teacher.advisory_section ? `Adviser · ${data.teacher.advisory_section}` : (data.teacher.department ?? 'Teaching staff'),
+                name: data.teacher?.name ?? auth.user?.name ?? 'Teacher account',
+                subline: data.teacher?.advisory_section
+                    ? `Adviser · ${data.teacher.advisory_section}`
+                    : (data.teacher?.department ?? (canPreviewPortals.value ? 'Administrator preview' : 'Teaching staff')),
                 roleLabel: 'Teacher',
             };
         } else {
-            const role = auth.primaryRole;
             const portal = staffRole.value;
-            const rolePath = role ? ROLE_HOME_PATHS[role.name] : undefined;
             identity.value = {
                 name: auth.user?.name ?? 'Staff account',
-                subline: portal?.label ?? role?.label ?? 'School staff',
-                roleLabel: portal?.eyebrow ?? (role && rolePath ? role.name.replace(/-/g, ' ') : 'Staff'),
+                subline: portal?.label ?? (canPreviewPortals.value ? 'Administrator preview' : 'School staff'),
+                roleLabel: portal?.eyebrow ?? 'Staff',
             };
         }
     } catch {
-        identity.value = null;
+        identity.value = canPreviewPortals.value
+            ? {
+                  name: auth.user?.name ?? 'Administrator',
+                  subline: 'Administrator preview',
+                  roleLabel: props.role === 'student' ? 'Learner' : props.role === 'parent' ? 'Guardian' : props.role === 'teacher' ? 'Teacher' : 'Staff',
+              }
+            : null;
     }
 });
 
-const staffRole = computed(() => (auth.primaryRole ? staffPortalByRole(auth.primaryRole.name) : undefined));
+const canPreviewPortals = computed(() => isAdmin(auth.user?.roles));
+
+const staffRouteRole = computed(() => {
+    const roleParam = route.params.role;
+    return typeof roleParam === 'string' ? roleParam : undefined;
+});
+
+const staffRole = computed(() => {
+    if (staffRouteRole.value) {
+        return staffPortalByRole(staffRouteRole.value);
+    }
+
+    return auth.primaryRole ? staffPortalByRole(auth.primaryRole.name) : undefined;
+});
 
 const overviewHref = computed(() => {
     if (props.role === 'student') return '/portal/student';
     if (props.role === 'parent') return '/portal/parent';
     if (props.role === 'teacher') return '/portal/teacher';
 
+    if (staffRouteRole.value) {
+        return ROLE_HOME_PATHS[staffRouteRole.value] ?? `/portal/staff/${staffRouteRole.value}`;
+    }
+
     const role = auth.primaryRole;
     return role && ROLE_HOME_PATHS[role.name] ? ROLE_HOME_PATHS[role.name] : '/portal/staff/principal';
+});
+
+const adminPortalLinks = computed<NavItem[]>(() => {
+    if (!canPreviewPortals.value) {
+        return [];
+    }
+
+    const links: NavItem[] = [
+        { title: 'Student portal', href: '/portal/student', icon: GraduationCap },
+        { title: 'Parent portal', href: '/portal/parent', icon: UserRound },
+        { title: 'Teacher portal', href: '/portal/teacher', icon: Users },
+    ];
+
+    for (const portal of STAFF_PORTALS) {
+        links.push({
+            title: portal.label,
+            href: ROLE_HOME_PATHS[portal.role] ?? `/portal/staff/${portal.role}`,
+            icon: ClipboardList,
+        });
+    }
+
+    return links;
 });
 
 function isActive(href: string): boolean {
@@ -246,6 +291,20 @@ const groups = computed(() => {
                 <SidebarGroupLabel>{{ section.label }}</SidebarGroupLabel>
                 <SidebarMenu>
                     <SidebarMenuItem v-for="item in section.items" :key="item.title">
+                        <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.title">
+                            <RouterLink :to="item.href">
+                                <component :is="item.icon" />
+                                <span>{{ item.title }}</span>
+                            </RouterLink>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup v-if="adminPortalLinks.length" class="px-2 py-0">
+                <SidebarGroupLabel>All portals</SidebarGroupLabel>
+                <SidebarMenu>
+                    <SidebarMenuItem v-for="item in adminPortalLinks" :key="item.href">
                         <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.title">
                             <RouterLink :to="item.href">
                                 <component :is="item.icon" />
