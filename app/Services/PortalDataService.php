@@ -49,6 +49,8 @@ class PortalDataService
             'age' => $student->age,
             'profile_picture_url' => $student->profile_picture_path ? url('storage/'.$student->profile_picture_path) : null,
             'status' => $student->status,
+            'school' => $student->schoolProfile?->name ?? $enrollment?->campus?->schoolProfile?->name,
+            'school_short_name' => $student->schoolProfile?->short_name ?? $enrollment?->campus?->schoolProfile?->short_name,
             'enrollment_status' => $enrollment?->status,
             'enrollment_status_label' => $enrollment?->display_status_label,
             'academic_year' => $enrollment?->academicYear?->name,

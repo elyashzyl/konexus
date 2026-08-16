@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Http\Requests\Api\Concerns\ValidatesCatalogCampus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class BuildingRequest extends FormRequest
 {
+    use ValidatesCatalogCampus;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -23,6 +26,7 @@ class BuildingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->catalogCampusRules(),
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:50', Rule::unique('buildings', 'code')->withoutTrashed()->ignore($this->route('id'))],
             'description' => ['nullable', 'string', 'max:1000'],

@@ -39,6 +39,7 @@ onMounted(async () => {
 });
 
 const identifiers = computed(() => [
+    { label: 'School', value: profile.value?.school || 'Not recorded' },
     { label: 'School ID', value: profile.value?.student_number || 'Not recorded' },
     { label: 'LRN', value: profile.value?.lrn || 'Not recorded' },
     { label: 'Grade level', value: profile.value?.grade_level || 'Not recorded' },
@@ -149,7 +150,7 @@ function pad(index: number): string {
                                 </div>
                                 <div class="flex items-start gap-3">
                                     <MapPin class="mt-0.5 size-4 shrink-0 text-primary" />
-                                    <span>{{ profile.campus || '—' }}</span>
+                                    <span>{{ profile.campus || '—' }}<span v-if="profile.school"> · {{ profile.school }}</span></span>
                                 </div>
                             </div>
                         </div>
@@ -169,7 +170,7 @@ function pad(index: number): string {
                 </section>
 
                 <section class="portal-rise overflow-hidden rounded-2xl border border-border/60 bg-card" style="animation-delay: 80ms">
-                    <div class="grid divide-y divide-border/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    <div class="grid divide-y divide-border/60 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-y-0">
                         <div v-for="(item, index) in identifiers" :key="item.label" class="flex items-center gap-4 px-6 py-5">
                             <span class="index-num font-mono text-xs text-muted-foreground/60">{{ pad(index) }}</span>
                             <div class="min-w-0">

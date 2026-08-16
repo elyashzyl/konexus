@@ -28,6 +28,13 @@ class SystemSettingsSeeder extends Seeder
         ['portal', 'portal_enabled', 'true', 'boolean'],
         ['portal', 'parent_registration_enabled', 'true', 'boolean'],
         ['portal', 'student_registration_enabled', 'true', 'boolean'],
+        ['enrollment', 'enrollment_number_format', 'ENR-{YEAR}-{SEQ:6}', 'string'],
+        ['enrollment', 'reference_number_format', 'KXN-EN-{YEAR}-{SEQ:6}', 'string'],
+        ['enrollment', 'allow_multiple_per_year_branch', 'false', 'boolean'],
+        ['enrollment', 'auto_assign_section', 'true', 'boolean'],
+        ['enrollment', 'require_all_documents', 'true', 'boolean'],
+        ['enrollment', 'allow_capacity_override', 'true', 'boolean'],
+        ['enrollment', 'transfer_within_school', 'true', 'boolean'],
     ];
 
     /**

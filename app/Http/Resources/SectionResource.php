@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\ExposesCampusCatalog;
 use App\Models\Section;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -9,6 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /** @mixin Section */
 class SectionResource extends JsonResource
 {
+    use ExposesCampusCatalog;
+
     /**
      * Transform the resource into an array.
      *
@@ -18,6 +21,7 @@ class SectionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            ...$this->campusCatalogAttributes(),
             'grade_level_id' => $this->grade_level_id,
             'grade_level' => $this->whenLoaded('gradeLevel', fn () => $this->gradeLevel ? [
                 'id' => $this->gradeLevel->id,

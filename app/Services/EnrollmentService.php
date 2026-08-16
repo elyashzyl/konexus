@@ -565,8 +565,8 @@ class EnrollmentService extends CrudService
     protected function generateNumber(string $field, int $academicYearId): string
     {
         $key = $field === 'reference_number'
-            ? 'enrollment.reference_number_format'
-            : 'enrollment.enrollment_number_format';
+            ? 'reference_number_format'
+            : 'enrollment_number_format';
 
         $format = $this->settings->value($key, $field === 'reference_number' ? 'KXN-EN-{YEAR}-{SEQ:6}' : 'ENR-{YEAR}-{SEQ:6}');
 
@@ -655,7 +655,7 @@ class EnrollmentService extends CrudService
         }
 
         $allowMultiple = filter_var(
-            $this->settings->value('enrollment.allow_multiple_per_year_branch', false),
+            $this->settings->value('allow_multiple_per_year_branch', false),
             FILTER_VALIDATE_BOOLEAN
         );
 

@@ -65,6 +65,47 @@ class SystemSettingCatalog
                 ],
             ],
         ],
+        'enrollment' => [
+            'label' => 'Enrollment',
+            'description' => 'Per-school enrollment workflow, numbering, and placement rules.',
+            'settings' => [
+                'enrollment_number_format' => [
+                    'label' => 'Enrollment Number Format',
+                    'description' => 'Template for enrollment numbers. Use {YEAR} and {SEQ:n} placeholders.',
+                    'type' => 'string',
+                ],
+                'reference_number_format' => [
+                    'label' => 'Reference Number Format',
+                    'description' => 'Template for public enrollment reference numbers.',
+                    'type' => 'string',
+                ],
+                'allow_multiple_per_year_branch' => [
+                    'label' => 'Allow Multiple Enrollments Per Year',
+                    'description' => 'Let a student hold more than one enrollment in the same academic year.',
+                    'type' => 'boolean',
+                ],
+                'auto_assign_section' => [
+                    'label' => 'Auto-Assign Section',
+                    'description' => 'Automatically place students into an available section during enrollment.',
+                    'type' => 'boolean',
+                ],
+                'require_all_documents' => [
+                    'label' => 'Require All Documents',
+                    'description' => 'Block enrollment completion until every required document is verified.',
+                    'type' => 'boolean',
+                ],
+                'allow_capacity_override' => [
+                    'label' => 'Allow Capacity Override',
+                    'description' => 'Let registrars exceed section capacity when explicitly approved.',
+                    'type' => 'boolean',
+                ],
+                'transfer_within_school' => [
+                    'label' => 'Allow In-School Transfers',
+                    'description' => 'Enable campus or section transfers within the same school.',
+                    'type' => 'boolean',
+                ],
+            ],
+        ],
         'notifications' => [
             'label' => 'Notifications',
             'description' => 'Which notification channels your school uses to reach students and parents.',

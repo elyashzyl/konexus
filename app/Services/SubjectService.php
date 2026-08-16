@@ -21,7 +21,7 @@ class SubjectService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['department', 'gradeLevel'];
+    protected array $with = ['department', 'gradeLevel', 'campus', 'schoolProfile'];
 
     public function __construct(private readonly SubjectRepositoryInterface $repo) {}
 

@@ -21,7 +21,7 @@ class BuildingService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = [];
+    protected array $with = ['campus', 'schoolProfile'];
 
     public function __construct(private readonly BuildingRepositoryInterface $repo) {}
 

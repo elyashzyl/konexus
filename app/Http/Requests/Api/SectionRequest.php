@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Http\Requests\Api\Concerns\ValidatesCatalogCampus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SectionRequest extends FormRequest
 {
+    use ValidatesCatalogCampus;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -23,6 +26,7 @@ class SectionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->catalogCampusRules(),
             'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
             'name' => ['required', 'string', 'max:100', Rule::unique('sections', 'name')->where('grade_level_id', $this->input('grade_level_id'))->withoutTrashed()->ignore($this->route('id'))],
             'code' => ['nullable', 'string', 'max:50'],

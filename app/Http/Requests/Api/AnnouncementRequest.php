@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Http\Requests\Api\Concerns\ValidatesCatalogCampus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AnnouncementRequest extends FormRequest
 {
+    use ValidatesCatalogCampus;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -22,6 +25,7 @@ class AnnouncementRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->catalogCampusRules(),
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:100'],

@@ -39,8 +39,24 @@ interface GradeLevel {
     education_level: string;
 }
 
+interface SchoolOption {
+    id: number;
+    name: string;
+    short_name: string | null;
+}
+
+interface CampusOption {
+    id: number;
+    name: string;
+    code: string | null;
+    address: string | null;
+}
+
 interface EnrollmentOptions {
+    schools: SchoolOption[];
     school_id: number | null;
+    campuses: CampusOption[];
+    campus_id: number | null;
     academic_years: AcademicYear[];
     grade_levels: GradeLevel[];
 }
@@ -125,10 +141,19 @@ const departmentLevelFilters: Record<string, string[]> = {
     'senior-high': ['senior-high'],
 };
 
-const options = ref<EnrollmentOptions>({ school_id: null, academic_years: [], grade_levels: [] });
+const options = ref<EnrollmentOptions>({
+    schools: [],
+    school_id: null,
+    campuses: [],
+    campus_id: null,
+    academic_years: [],
+    grade_levels: [],
+});
 const optionsLoading = ref(true);
 
 const form = ref({
+    school_profile_id: '',
+    campus_id: '',
     academic_year_id: '',
     department: '',
     strand: '',
@@ -161,6 +186,8 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
 const chineseMandatory = computed(() => ['pre-school', 'grade-school'].includes(form.value.department));
 const showStrand = computed(() => form.value.department === 'senior-high');
 const chineseApplicable = computed(() => track.value === 'chinese');
+const showSchoolSelector = computed(() => options.value.schools.length > 1);
+const showCampusSelector = computed(() => options.value.campuses.length > 1);
 
 const levelOptions = computed<GradeLevel[]>(() => {
     const filters = departmentLevelFilters[form.value.department];
@@ -233,6 +260,36 @@ const heroCopy = computed(() => {
 });
 
 watch(
+    () => form.value.school_profile_id,
+    async (schoolId, previousSchoolId) => {
+        if (!schoolId || schoolId === previousSchoolId) {
+            return;
+        }
+
+        form.value.campus_id = '';
+        form.value.academic_year_id = '';
+        form.value.incoming_level = '';
+        await loadOptions({ school_profile_id: Number(schoolId) });
+    },
+);
+
+watch(
+    () => form.value.campus_id,
+    async (campusId, previousCampusId) => {
+        if (!campusId || campusId === previousCampusId) {
+            return;
+        }
+
+        form.value.academic_year_id = '';
+        form.value.incoming_level = '';
+        await loadOptions({
+            school_profile_id: Number(form.value.school_profile_id),
+            campus_id: Number(campusId),
+        });
+    },
+);
+
+watch(
     () => form.value.department,
     (department) => {
         if (['pre-school', 'grade-school'].includes(department)) {
@@ -254,12 +311,22 @@ onMounted(async () => {
     await checkResume();
 });
 
-const loadOptions = async () => {
+const loadOptions = async (params: { school_profile_id?: number; campus_id?: number } = {}) => {
+    optionsLoading.value = true;
+
     try {
-        const response = await api.get<{ data: EnrollmentOptions }>('/public/enrollment/options');
+        const response = await api.get<{ data: EnrollmentOptions }>('/public/enrollment/options', { params });
         options.value = response.data.data;
 
-        if (options.value.academic_years.length === 1) {
+        if (options.value.school_id && !form.value.school_profile_id) {
+            form.value.school_profile_id = String(options.value.school_id);
+        }
+
+        if (options.value.campus_id && !form.value.campus_id) {
+            form.value.campus_id = String(options.value.campus_id);
+        }
+
+        if (options.value.academic_years.length === 1 && !form.value.academic_year_id) {
             form.value.academic_year_id = String(options.value.academic_years[0].id);
         }
     } catch (error) {
@@ -361,6 +428,8 @@ const startNew = () => {
     resumeAvailable.value = false;
     step.value = 1;
     form.value = {
+        school_profile_id: options.value.school_id ? String(options.value.school_id) : '',
+        campus_id: options.value.campus_id ? String(options.value.campus_id) : '',
         academic_year_id: options.value.academic_years.length === 1 ? String(options.value.academic_years[0].id) : '',
         department: '',
         strand: '',
@@ -388,6 +457,8 @@ const goBack = () => {
 const validate = (): Record<string, string> => {
     const nextErrors: Record<string, string> = {};
 
+    if (!form.value.school_profile_id) nextErrors.school_profile_id = 'Please choose a school.';
+    if (!form.value.campus_id) nextErrors.campus_id = 'Please choose a campus.';
     if (!form.value.academic_year_id) nextErrors.academic_year_id = 'Please choose a school year.';
     if (!form.value.department) nextErrors.department = 'Please choose a department.';
     if (showStrand.value && !form.value.strand) nextErrors.strand = 'Please choose a strand.';
@@ -412,6 +483,8 @@ const submitPart1 = async () => {
     try {
         const response = await api.post<{ data: Application }>('/public/enrollments', {
             ...form.value,
+            school_profile_id: Number(form.value.school_profile_id),
+            campus_id: Number(form.value.campus_id),
             academic_year_id: Number(form.value.academic_year_id),
         });
         application.value = {
@@ -578,6 +651,46 @@ const formatExpiry = (iso: string): string => {
                         </CardHeader>
 
                         <CardContent class="grid gap-6">
+                            <div v-if="showSchoolSelector" class="grid gap-2">
+                                <Label for="school_profile_id">School</Label>
+                                <Select v-model="form.school_profile_id" :disabled="optionsLoading">
+                                    <SelectTrigger id="school_profile_id" class="h-9">
+                                        <SelectValue :placeholder="optionsLoading ? 'Loading…' : 'Select school'" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem v-for="school in options.schools" :key="school.id" :value="String(school.id)">
+                                            {{ school.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="errors.school_profile_id" />
+                            </div>
+
+                            <div v-if="showCampusSelector || form.school_profile_id" class="grid gap-2">
+                                <Label for="campus_id">Campus</Label>
+                                <Select v-model="form.campus_id" :disabled="optionsLoading || !form.school_profile_id || options.campuses.length === 0">
+                                    <SelectTrigger id="campus_id" class="h-9">
+                                        <SelectValue
+                                            :placeholder="
+                                                optionsLoading
+                                                    ? 'Loading…'
+                                                    : !form.school_profile_id
+                                                      ? 'Select a school first'
+                                                      : options.campuses.length === 0
+                                                        ? 'No campuses available'
+                                                        : 'Select campus'
+                                            "
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem v-for="campus in options.campuses" :key="campus.id" :value="String(campus.id)">
+                                            {{ campus.name }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError :message="errors.campus_id" />
+                            </div>
+
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="grid gap-2">
                                     <Label>Date</Label>

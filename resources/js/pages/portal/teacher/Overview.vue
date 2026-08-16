@@ -18,7 +18,7 @@ import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 const loading = ref(true);
-const teacher = ref<{ id: number; name: string; employee_number: string | null; specialization: string | null; department: string | null; advisory_section: string | null } | null>(null);
+const teacher = ref<{ id: number; name: string; employee_number: string | null; specialization: string | null; department: string | null; advisory_section: string | null; school: string | null; campus: string | null } | null>(null);
 const stats = ref<Record<string, number>>({});
 const assignments = ref<{ id: number; subject: string | null; section: string | null; term: string | null }[]>([]);
 const schedule = ref<PortalScheduleEntry[]>([]);
@@ -40,6 +40,8 @@ onMounted(async () => {
 });
 
 const identifiers = computed(() => [
+    { label: 'School', value: teacher.value?.school || 'Not recorded' },
+    { label: 'Campus', value: teacher.value?.campus || 'Not recorded' },
     { label: 'Employee number', value: teacher.value?.employee_number || 'Not recorded' },
     { label: 'Department', value: teacher.value?.department || 'Not recorded' },
     { label: 'Specialization', value: teacher.value?.specialization || 'Not recorded' },

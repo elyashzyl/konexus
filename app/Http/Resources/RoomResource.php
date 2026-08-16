@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\ExposesCampusCatalog;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -9,6 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /** @mixin Room */
 class RoomResource extends JsonResource
 {
+    use ExposesCampusCatalog;
+
     /**
      * Transform the resource into an array.
      *
@@ -18,6 +21,7 @@ class RoomResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            ...$this->campusCatalogAttributes(),
             'name' => $this->name,
             'code' => $this->code,
             'building_id' => $this->building_id,

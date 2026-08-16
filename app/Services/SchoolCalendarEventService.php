@@ -21,7 +21,7 @@ class SchoolCalendarEventService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['academicYear'];
+    protected array $with = ['academicYear', 'campus', 'schoolProfile'];
 
     public function __construct(private readonly SchoolCalendarEventRepositoryInterface $repo) {}
 

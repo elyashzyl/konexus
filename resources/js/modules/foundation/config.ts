@@ -98,6 +98,23 @@ const currency = (value: unknown): string => {
     return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const schoolLabel = (row: Record<string, unknown>): string =>
+    String((row.school_profile as { name?: string } | undefined)?.name ?? (row.campus as { school_profile?: { name?: string } } | undefined)?.school_profile?.name ?? '—');
+
+const campusLabel = (row: Record<string, unknown>): string => String((row.campus as { name?: string } | undefined)?.name ?? '—');
+
+const CAMPUS_CATALOG_COLUMNS = [
+    { key: 'school_profile', label: 'School', cell: schoolLabel },
+    { key: 'campus', label: 'Campus', cell: campusLabel },
+];
+
+const CAMPUS_CATALOG_FIELDS = [
+    { name: 'school_profile', label: 'School', type: 'display' as const, hint: 'Inherited from the selected campus workspace.' },
+    { name: 'campus_id', label: 'Campus', type: 'select' as const, optionsResource: 'campuses', required: true, disabledOnEdit: true },
+];
+
+const campusOptionSources = { campus_id: 'campuses' };
+
 export const FOUNDATION_MODULES: FoundationModule[] = [
     {
         key: 'system-settings',
@@ -244,6 +261,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'grade level',
         icon: Layers,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'short_name', label: 'Short name' },
@@ -252,6 +270,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Grade 7' },
             { name: 'code', label: 'Code', type: 'text', placeholder: 'e.g. G7' },
             { name: 'short_name', label: 'Short name', type: 'text', placeholder: 'e.g. 7' },
@@ -259,6 +278,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'sequence', label: 'Sequence', type: 'number' },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
+        optionSources: campusOptionSources,
     },
     {
         key: 'sections',
@@ -269,6 +289,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'section',
         icon: LayoutGrid,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'grade_level', label: 'Grade level' },
@@ -277,6 +298,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'grade_level_id', label: 'Grade level', type: 'select', optionsResource: 'grade-levels', required: true },
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Diamond' },
             { name: 'code', label: 'Code', type: 'text', placeholder: 'e.g. 7-DIAMOND' },
@@ -284,7 +306,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'max_capacity', label: 'Max capacity', type: 'number' },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
-        optionSources: { grade_level_id: 'grade-levels', room_id: 'rooms' },
+        optionSources: { ...campusOptionSources, grade_level_id: 'grade-levels', room_id: 'rooms' },
     },
     {
         key: 'departments',
@@ -295,17 +317,20 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'department',
         icon: Network,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'description', label: 'Description' },
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Science Department' },
             { name: 'code', label: 'Code', type: 'text', placeholder: 'e.g. SCI' },
             { name: 'description', label: 'Description', type: 'textarea', fullWidth: true },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
+        optionSources: campusOptionSources,
     },
     {
         key: 'subjects',
@@ -316,6 +341,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'subject',
         icon: BookOpen,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'department', label: 'Department' },
@@ -323,6 +349,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Science 7' },
             { name: 'code', label: 'Code', type: 'text', required: true, placeholder: 'e.g. SCI7' },
             { name: 'department_id', label: 'Department', type: 'select', optionsResource: 'departments' },
@@ -330,7 +357,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'description', label: 'Description', type: 'textarea', fullWidth: true },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
-        optionSources: { department_id: 'departments', grade_level_id: 'grade-levels' },
+        optionSources: { ...campusOptionSources, department_id: 'departments', grade_level_id: 'grade-levels' },
     },
     {
         key: 'buildings',
@@ -341,17 +368,20 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'building',
         icon: Building,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'description', label: 'Description' },
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Main Building' },
             { name: 'code', label: 'Code', type: 'text', placeholder: 'e.g. BLD-A' },
             { name: 'description', label: 'Description', type: 'textarea', fullWidth: true },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
+        optionSources: campusOptionSources,
     },
     {
         key: 'rooms',
@@ -362,6 +392,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'room',
         icon: DoorOpen,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'name', label: 'Name', sortable: true },
             { key: 'code', label: 'Code' },
             { key: 'building', label: 'Building' },
@@ -370,6 +401,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Room 101' },
             { name: 'code', label: 'Code', type: 'text', placeholder: 'e.g. R101' },
             { name: 'building_id', label: 'Building', type: 'select', optionsResource: 'buildings' },
@@ -377,7 +409,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'capacity', label: 'Capacity', type: 'number' },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
-        optionSources: { building_id: 'buildings' },
+        optionSources: { ...campusOptionSources, building_id: 'buildings' },
     },
     {
         key: 'school-calendar',
@@ -388,6 +420,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'calendar event',
         icon: CalendarDays,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'title', label: 'Title', sortable: true },
             { key: 'category', label: 'Category' },
             { key: 'academic_year', label: 'Academic year' },
@@ -396,6 +429,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Panagbenga Festival' },
             { name: 'category', label: 'Category', type: 'select', options: CALENDAR_CATEGORIES, required: true },
             { name: 'academic_year_id', label: 'Academic year', type: 'select', optionsResource: 'academic-years' },
@@ -408,7 +442,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'description', label: 'Description', type: 'textarea', fullWidth: true },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
-        optionSources: { academic_year_id: 'academic-years' },
+        optionSources: { ...campusOptionSources, academic_year_id: 'academic-years' },
     },
     {
         key: 'announcements',
@@ -419,6 +453,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         singularLabel: 'announcement',
         icon: Megaphone,
         columns: [
+            ...CAMPUS_CATALOG_COLUMNS,
             { key: 'title', label: 'Title', sortable: true },
             { key: 'category', label: 'Category' },
             { key: 'priority', label: 'Priority' },
@@ -427,6 +462,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { key: 'is_active', label: 'Status', align: 'center' },
         ],
         fields: [
+            ...CAMPUS_CATALOG_FIELDS,
             { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Midterm Exam Schedule' },
             { name: 'content', label: 'Content', type: 'textarea', fullWidth: true, required: true },
             { name: 'category', label: 'Category', type: 'text', placeholder: 'e.g. academics, events' },
@@ -437,6 +473,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
             { name: 'published', label: 'Published', type: 'switch', hint: 'Publishing stamps the published date automatically.' },
             { name: 'is_active', label: 'Active', type: 'switch' },
         ],
+        optionSources: campusOptionSources,
     },
     {
         key: 'master-data',

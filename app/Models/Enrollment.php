@@ -25,6 +25,7 @@ class Enrollment extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'school_profile_id',
         'student_id',
         'academic_year_id',
         'curriculum_program_id',

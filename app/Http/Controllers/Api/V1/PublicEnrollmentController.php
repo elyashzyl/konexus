@@ -8,6 +8,7 @@ use App\Http\Requests\Api\PublicEnrollmentFamilyRequest;
 use App\Http\Requests\Api\PublicEnrollmentRequest;
 use App\Http\Requests\Api\PublicEnrollmentStudentRequest;
 use App\Models\AcademicYear;
+use App\Models\Campus;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Guardian;
@@ -41,38 +42,72 @@ class PublicEnrollmentController extends ApiController
     /**
      * The option lists needed to render the online enrollment form.
      */
-    public function options(): JsonResponse
+    public function options(Request $request): JsonResponse
     {
-        $schoolId = SchoolProfile::query()->where('is_active', true)->orderBy('id')->value('id');
+        $schools = SchoolProfile::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_name']);
 
-        $academicYears = AcademicYear::query()
-            ->when($schoolId, fn ($query) => $query->where('school_profile_id', $schoolId))
-            ->orderByDesc('start_date')
-            ->limit(10)
-            ->get(['id', 'name', 'code', 'start_date', 'end_date']);
+        $requestedSchoolId = $request->filled('school_profile_id')
+            ? (int) $request->integer('school_profile_id')
+            : null;
 
-        $gradeLevels = GradeLevel::query()
-            ->when($schoolId, fn ($query) => $query->where('school_profile_id', $schoolId))
-            ->orderBy('sequence')
-            ->get(['id', 'name', 'code', 'short_name', 'education_level']);
+        if ($requestedSchoolId !== null && ! $schools->contains('id', $requestedSchoolId)) {
+            return $this->error('The selected school is not available for enrollment.', null, 422);
+        }
 
-        // Fall back to the platform structure when the active school has not
-        // configured its own academic year / grade levels yet.
-        if ($academicYears->isEmpty()) {
+        $schoolId = $requestedSchoolId ?? ($schools->count() === 1 ? $schools->first()?->id : null);
+
+        $campuses = collect();
+        $campusId = null;
+
+        if ($schoolId !== null) {
+            $campuses = Campus::query()
+                ->where('school_profile_id', $schoolId)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'address']);
+
+            $requestedCampusId = $request->filled('campus_id')
+                ? (int) $request->integer('campus_id')
+                : null;
+
+            if ($requestedCampusId !== null && ! $campuses->contains('id', $requestedCampusId)) {
+                return $this->error('The selected campus is not available for enrollment.', null, 422);
+            }
+
+            $campusId = $requestedCampusId ?? ($campuses->count() === 1 ? $campuses->first()?->id : null);
+        }
+
+        $academicYears = collect();
+        $gradeLevels = collect();
+
+        if ($schoolId !== null) {
             $academicYears = AcademicYear::query()
+                ->where('school_profile_id', $schoolId)
                 ->orderByDesc('start_date')
                 ->limit(10)
                 ->get(['id', 'name', 'code', 'start_date', 'end_date']);
-        }
 
-        if ($gradeLevels->isEmpty()) {
-            $gradeLevels = GradeLevel::query()
-                ->orderBy('sequence')
-                ->get(['id', 'name', 'code', 'short_name', 'education_level']);
+            if ($campusId !== null) {
+                $gradeLevels = GradeLevel::query()
+                    ->where('school_profile_id', $schoolId)
+                    ->where(function ($query) use ($campusId): void {
+                        $query->where('campus_id', $campusId)
+                            ->orWhereNull('campus_id');
+                    })
+                    ->where('is_active', true)
+                    ->orderBy('sequence')
+                    ->get(['id', 'name', 'code', 'short_name', 'education_level']);
+            }
         }
 
         return $this->success([
+            'schools' => $schools,
             'school_id' => $schoolId,
+            'campuses' => $campuses,
+            'campus_id' => $campusId,
             'academic_years' => $academicYears,
             'grade_levels' => $gradeLevels,
         ], 'Enrollment options retrieved.');
@@ -89,7 +124,20 @@ class PublicEnrollmentController extends ApiController
         $yearCode = (string) (AcademicYear::query()->find($data['academic_year_id'])?->code ?? now()->year);
         $padded = str_pad((string) $seq, 6, '0', STR_PAD_LEFT);
 
+        $gradeLevelId = GradeLevel::query()
+            ->where('school_profile_id', $data['school_profile_id'])
+            ->where(function ($query) use ($data): void {
+                $query->where('campus_id', $data['campus_id'])
+                    ->orWhereNull('campus_id');
+            })
+            ->where('name', $data['incoming_level'])
+            ->where('is_active', true)
+            ->value('id');
+
         $enrollment = Enrollment::create([
+            'school_profile_id' => $data['school_profile_id'],
+            'campus_id' => $data['campus_id'],
+            'grade_level_id' => $gradeLevelId,
             'academic_year_id' => $data['academic_year_id'],
             'department' => $data['department'],
             'strand' => $data['strand'] ?? null,
@@ -125,6 +173,8 @@ class PublicEnrollmentController extends ApiController
                 'id' => $enrollment->id,
                 'reference_number' => $enrollment->reference_number,
                 'status' => $enrollment->status,
+                'school_profile_id' => $enrollment->school_profile_id,
+                'campus_id' => $enrollment->campus_id,
                 'academic_year_id' => $enrollment->academic_year_id,
                 'department' => $enrollment->department,
                 'strand' => $enrollment->strand,

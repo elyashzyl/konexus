@@ -23,7 +23,7 @@ export interface CrudQuery {
     trashed?: boolean;
 }
 
-export type CrudFieldType = 'text' | 'textarea' | 'number' | 'email' | 'url' | 'date' | 'select' | 'switch';
+export type CrudFieldType = 'text' | 'textarea' | 'number' | 'email' | 'url' | 'date' | 'select' | 'switch' | 'display';
 
 export interface CrudOption {
     value: string | number;
@@ -46,6 +46,10 @@ export interface CrudField {
     hint?: string;
     /** Span both columns of the form grid. */
     fullWidth?: boolean;
+    /** Read-only display field (not submitted). */
+    readOnly?: boolean;
+    /** Disable this field when editing an existing record. */
+    disabledOnEdit?: boolean;
 }
 
 export interface CrudColumn {

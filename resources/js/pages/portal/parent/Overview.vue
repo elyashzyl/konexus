@@ -26,6 +26,7 @@ onMounted(async () => {
 });
 
 const identifiers = computed(() => [
+    { label: 'School', value: children.value[0]?.school || '—' },
     { label: 'Email', value: parent.value?.email || '—' },
     { label: 'Contact number', value: parent.value?.contact_number || '—' },
     { label: 'Linked children', value: String(children.value.length) },
@@ -119,7 +120,7 @@ function pad(index: number): string {
                 </section>
 
                 <section class="portal-rise overflow-hidden rounded-2xl border border-border/60 bg-card" style="animation-delay: 80ms">
-                    <div class="grid divide-y divide-border/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    <div class="grid divide-y divide-border/60 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-y-0">
                         <div v-for="(item, index) in identifiers" :key="item.label" class="flex items-center gap-4 px-6 py-5">
                             <span class="index-num font-mono text-xs text-muted-foreground/60">{{ pad(index) }}</span>
                             <div class="min-w-0">
@@ -158,6 +159,7 @@ function pad(index: number): string {
                                 <span class="block font-display text-lg font-medium tracking-[-0.01em] text-foreground">{{ child.name }}</span>
                                 <span class="mt-0.5 block text-[13px] text-muted-foreground">
                                     {{ child.grade_level }}<span v-if="child.section"> · {{ child.section }}</span>
+                                    <span v-if="child.school"> · {{ child.school }}</span>
                                 </span>
                             </span>
                             <span class="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">

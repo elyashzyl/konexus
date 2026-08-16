@@ -23,7 +23,7 @@ class AnnouncementService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['author'];
+    protected array $with = ['author', 'campus', 'schoolProfile'];
 
     public function __construct(private readonly AnnouncementRepositoryInterface $repo) {}
 

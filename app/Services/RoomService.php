@@ -21,7 +21,7 @@ class RoomService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['building'];
+    protected array $with = ['building', 'campus', 'schoolProfile'];
 
     public function __construct(private readonly RoomRepositoryInterface $repo) {}
 

@@ -52,6 +52,8 @@ class TeacherPortalService
                 'specialization' => $teacher->specialization,
                 'department' => $teacher->department?->name,
                 'advisory_section' => $teacher->advisoryClass?->name,
+                'school' => $teacher->employee?->schoolProfile?->name,
+                'campus' => $teacher->employee?->campuses->first()?->name,
             ],
             'academic_year' => $this->context->currentAcademicYear()?->name,
             'academic_term' => $this->context->currentAcademicTerm()?->name,

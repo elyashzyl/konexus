@@ -13,7 +13,7 @@ import api, { extractError, extractFieldErrors } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useWorkspaceStore } from '@/stores/workspace';
 import type { CampusWorkspace } from '@/types';
-import { Building2, CheckCircle2, ChevronRight, MapPin, Plus, Save, Settings2, ShieldCheck, Trash2, X } from 'lucide-vue-next';
+import { Building2, CheckCircle2, ChevronRight, MapPin, Pencil, Plus, Save, Settings2, ShieldCheck, Trash2, X } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -34,6 +34,7 @@ const loading = ref(true);
 const saving = ref(false);
 const deletingId = ref<number | null>(null);
 const showCreate = ref(false);
+const editingCampus = ref<CampusWorkspace | null>(null);
 const fieldErrors = ref<Record<string, string[]>>({});
 
 const form = reactive({
@@ -77,33 +78,58 @@ async function loadSchoolProfiles(): Promise<void> {
 }
 
 function openCreate(): void {
+    editingCampus.value = null;
     resetForm();
     showCreate.value = true;
 }
 
-async function createCampus(): Promise<void> {
+function openEdit(campus: CampusWorkspace): void {
+    editingCampus.value = campus;
+    form.school_profile_id = String(campus.school_profile_id ?? configuredSchoolProfileId.value ?? '');
+    form.name = campus.name;
+    form.code = campus.code ?? '';
+    form.address = campus.address ?? '';
+    form.contact_number = campus.contact_number ?? '';
+    form.is_active = campus.is_active;
+    fieldErrors.value = {};
+    showCreate.value = true;
+}
+
+async function saveCampus(): Promise<void> {
     saving.value = true;
     fieldErrors.value = {};
 
+    const payload = {
+        school_profile_id: form.school_profile_id ? Number(form.school_profile_id) : undefined,
+        name: form.name.trim(),
+        code: form.code.trim() || undefined,
+        address: form.address.trim() || undefined,
+        contact_number: form.contact_number.trim() || undefined,
+        is_active: form.is_active,
+    };
+
     try {
-        await api.post('/campuses', {
-            school_profile_id: form.school_profile_id ? Number(form.school_profile_id) : undefined,
-            name: form.name.trim(),
-            code: form.code.trim() || undefined,
-            address: form.address.trim() || undefined,
-            contact_number: form.contact_number.trim() || undefined,
-            is_active: form.is_active,
-        });
+        if (editingCampus.value) {
+            await api.put(`/campuses/${editingCampus.value.id}`, payload);
+            toast.success('Campus workspace updated.');
+        } else {
+            await api.post('/campuses', payload);
+            toast.success('Campus workspace created and linked to its school profile.');
+        }
 
         await Promise.all([loadCampuses(), workspace.initialize(true)]);
         showCreate.value = false;
-        toast.success('Campus workspace created and linked to its school profile.');
+        editingCampus.value = null;
     } catch (error) {
         fieldErrors.value = extractFieldErrors(error);
         toast.error(extractError(error));
     } finally {
         saving.value = false;
     }
+}
+
+async function createCampus(): Promise<void> {
+    await saveCampus();
 }
 
 async function openWorkspace(campus: CampusWorkspace): Promise<void> {
@@ -258,6 +284,15 @@ onMounted(async () => {
                                     <Button
                                         variant="ghost"
                                         size="sm"
+                                        class="text-muted-foreground hover:text-primary"
+                                        title="Edit campus"
+                                        @click.stop="openEdit(campus)"
+                                    >
+                                        <Pencil class="size-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
                                         class="text-muted-foreground hover:text-destructive"
                                         :disabled="deletingId === campus.id || campus.id === workspace.activeCampus?.id"
                                         :title="campus.id === workspace.activeCampus?.id ? 'Switch away before deleting this campus' : 'Delete campus'"
@@ -289,13 +324,13 @@ onMounted(async () => {
                 <Card class="border-primary/25 shadow-md">
                     <CardHeader class="flex-row items-start justify-between gap-4 space-y-0">
                         <div>
-                            <CardTitle>Create campus workspace</CardTitle>
+                            <CardTitle>{{ editingCampus ? 'Edit campus workspace' : 'Create campus workspace' }}</CardTitle>
                             <CardDescription class="mt-1">The school profile link is required before this campus can be used for enrollment and academic operations.</CardDescription>
                         </div>
-                        <Button size="icon" variant="ghost" aria-label="Close campus setup" @click="showCreate = false"><X class="size-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="Close campus setup" @click="showCreate = false; editingCampus = null"><X class="size-4" /></Button>
                     </CardHeader>
                     <CardContent>
-                        <form class="grid gap-5 sm:grid-cols-2" @submit.prevent="createCampus">
+                        <form class="grid gap-5 sm:grid-cols-2" @submit.prevent="saveCampus">
                             <div class="sm:col-span-2">
                                 <Label for="campus-school-profile">School profile <span class="text-destructive">*</span></Label>
                                 <Select v-if="canChooseSchoolProfile" v-model="form.school_profile_id">
@@ -333,8 +368,8 @@ onMounted(async () => {
                                 <Switch id="campus-active" :checked="form.is_active" @update:checked="form.is_active = $event" />
                             </div>
                             <div class="flex justify-end gap-2 border-t pt-4 sm:col-span-2">
-                                <Button type="button" variant="outline" @click="showCreate = false">Cancel</Button>
-                                <Button type="submit" :disabled="saving || !form.name.trim() || !form.school_profile_id"><Save class="size-4" />{{ saving ? 'Creating…' : 'Create campus workspace' }}</Button>
+                                <Button type="button" variant="outline" @click="showCreate = false; editingCampus = null">Cancel</Button>
+                                <Button type="submit" :disabled="saving || !form.name.trim() || !form.school_profile_id"><Save class="size-4" />{{ saving ? 'Saving…' : editingCampus ? 'Save changes' : 'Create campus workspace' }}</Button>
                             </div>
                         </form>
                     </CardContent>

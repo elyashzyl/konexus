@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Api;
 
 use App\Enums\SchoolCalendarCategory;
+use App\Http\Requests\Api\Concerns\ValidatesCatalogCampus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SchoolCalendarEventRequest extends FormRequest
 {
+    use ValidatesCatalogCampus;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -24,6 +27,7 @@ class SchoolCalendarEventRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->catalogCampusRules(),
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', Rule::in(array_column(SchoolCalendarCategory::toSeedData(), 'value'))],
             'description' => ['nullable', 'string', 'max:5000'],

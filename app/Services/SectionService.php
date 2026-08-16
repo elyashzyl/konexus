@@ -21,7 +21,7 @@ class SectionService extends CrudService
      *
      * @var list<string>
      */
-    protected array $with = ['gradeLevel', 'adviser', 'room'];
+    protected array $with = ['gradeLevel', 'adviser', 'room', 'campus', 'schoolProfile'];
 
     public function __construct(private readonly SectionRepositoryInterface $repo) {}
 

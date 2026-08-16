@@ -35,6 +35,8 @@ export interface ChildSummary {
     grade_level: string | null;
     section: string | null;
     campus: string | null;
+    school: string | null;
+    school_short_name: string | null;
     adviser: string | null;
     academic_summary: AcademicSummary;
     modules: Record<string, boolean>;

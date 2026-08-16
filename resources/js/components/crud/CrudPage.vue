@@ -8,6 +8,7 @@ import type { CrudColumn, CrudField, CrudItem, CrudOption } from '@/types/crud';
 import type { LucideIcon } from 'lucide-vue-next';
 import { provide, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
+import { useWorkspaceStore } from '@/stores/workspace';
 
 const props = withDefaults(
     defineProps<{
@@ -35,6 +36,7 @@ const props = withDefaults(
 );
 
 const store = useCrudStore({ resource: props.resource });
+const workspace = useWorkspaceStore();
 
 provide('crudStore', store);
 
@@ -61,7 +63,13 @@ async function loadOptionSources(): Promise<void> {
 }
 
 function openCreate(): void {
-    editing.value = null;
+    const defaults: CrudItem = { id: 0 };
+
+    if (props.fields.some((field) => field.name === 'campus_id') && workspace.activeCampus?.id) {
+        defaults.campus_id = workspace.activeCampus.id;
+    }
+
+    editing.value = defaults;
     dialogOpen.value = true;
 }
 
@@ -117,7 +125,7 @@ async function confirmAction(): Promise<void> {
 
 async function handleSubmit(payload: Record<string, unknown>): Promise<void> {
     try {
-        if (editing.value) {
+        if (editing.value && editing.value.id) {
             await store.update(editing.value.id, payload);
             toast.success(`${props.singularLabel} updated.`);
         } else {
@@ -175,13 +183,14 @@ loadOptionSources();
 
     <FormDialog
         v-model:open="dialogOpen"
-        :title="editing ? `Edit ${singularLabel}` : `New ${singularLabel}`"
+        :title="editing?.id ? `Edit ${singularLabel}` : `New ${singularLabel}`"
         :fields="fields"
         :initial-values="editing"
         :options="options"
         :submitting="store.submitting"
         :field-errors="store.fieldErrors"
-        :submit-label="editing ? 'Save changes' : 'Create'"
+        :submit-label="editing?.id ? 'Save changes' : 'Create'"
+        :is-editing="Boolean(editing?.id)"
         @submit="handleSubmit"
     />
 

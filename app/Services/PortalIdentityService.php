@@ -49,6 +49,7 @@ class PortalIdentityService
         }
 
         return Student::query()
+            ->with('schoolProfile')
             ->where(function ($q) use ($user): void {
                 $q->where('user_id', $user->id);
                 if (filled($user->email)) {
@@ -88,7 +89,10 @@ class PortalIdentityService
             return null;
         }
 
-        return Teacher::query()->where('employee_id', $employee->id)->first();
+        return Teacher::query()
+            ->with(['employee.schoolProfile', 'employee.campuses', 'department', 'advisoryClass'])
+            ->where('employee_id', $employee->id)
+            ->first();
     }
 
     /**
@@ -146,7 +150,7 @@ class PortalIdentityService
     public function activeEnrollment(Student $student): ?\App\Models\Enrollment
     {
         return $student->activeEnrollment()
-            ->with(['gradeLevel', 'section', 'campus', 'academicYear', 'academicTerm'])
+            ->with(['gradeLevel', 'section', 'campus.schoolProfile', 'academicYear', 'academicTerm'])
             ->first();
     }
 }

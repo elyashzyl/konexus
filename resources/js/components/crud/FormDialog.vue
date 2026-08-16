@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { CrudField } from '@/types/crud';
 import { computed, reactive, watch } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useWorkspaceStore } from '@/stores/workspace';
 
 const props = withDefaults(
     defineProps<{
@@ -22,6 +24,7 @@ const props = withDefaults(
         fieldErrors?: Record<string, string[]>;
         submitLabel?: string;
         contentClass?: string;
+        isEditing?: boolean;
     }>(),
     {
         description: '',
@@ -31,7 +34,19 @@ const props = withDefaults(
         fieldErrors: () => ({}),
         submitLabel: 'Save',
         contentClass: 'max-w-3xl',
+        isEditing: false,
     },
+);
+
+const auth = useAuthStore();
+const workspace = useWorkspaceStore();
+
+const schoolDisplayName = computed(
+    () =>
+        (props.initialValues?.school_profile as { name?: string } | undefined)?.name ??
+        workspace.activeCampus?.school_profile?.name ??
+        auth.user?.school?.name ??
+        'Your school',
 );
 
 const emit = defineEmits<{
@@ -81,6 +96,10 @@ function buildPayload(): Record<string, unknown> {
     const payload: Record<string, unknown> = {};
 
     for (const field of props.fields) {
+        if (field.type === 'display' || field.readOnly) {
+            continue;
+        }
+
         const value = form[field.name];
 
         if (field.type === 'switch') {
@@ -123,7 +142,15 @@ function handleSubmit(): void {
 
             <form id="crud-form" class="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2" @submit.prevent="handleSubmit">
                 <div v-for="field in fields" :key="field.name" :class="{ 'col-span-full': field.fullWidth }">
-                    <template v-if="field.type === 'switch'">
+                    <template v-if="field.type === 'display'">
+                        <Label class="mb-1.5 block">{{ field.label }}</Label>
+                        <div class="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm font-medium">
+                            {{ field.name === 'school_profile' ? schoolDisplayName : form[field.name] || '—' }}
+                        </div>
+                        <p v-if="field.hint" class="mt-1.5 text-xs text-muted-foreground">{{ field.hint }}</p>
+                    </template>
+
+                    <template v-else-if="field.type === 'switch'">
                         <div class="flex items-center justify-between rounded-lg border p-4">
                             <div>
                                 <Label :for="`field-${field.name}`" class="font-medium">{{ field.label }}</Label>
@@ -139,7 +166,11 @@ function handleSubmit(): void {
                             <span v-if="field.required" class="text-destructive"> *</span>
                         </Label>
 
-                        <Select v-if="field.type === 'select'" v-model="form[field.name]">
+                        <Select
+                            v-if="field.type === 'select'"
+                            v-model="form[field.name]"
+                            :disabled="props.isEditing && field.disabledOnEdit"
+                        >
                             <SelectTrigger :id="`field-${field.name}`">
                                 <SelectValue :placeholder="field.placeholder ?? 'Select…'" />
                             </SelectTrigger>
