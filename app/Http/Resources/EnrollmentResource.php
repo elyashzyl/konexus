@@ -28,6 +28,13 @@ class EnrollmentResource extends JsonResource
             'enrollment_date' => $this->enrollment_date?->toDateString(),
             'date_enrolled' => $this->date_enrolled?->toDateString(),
 
+            'student_id' => $this->student_id,
+            'academic_year_id' => $this->academic_year_id,
+            'academic_term_id' => $this->academic_term_id,
+            'campus_id' => $this->campus_id,
+            'grade_level_id' => $this->grade_level_id,
+            'section_id' => $this->section_id,
+
             'student' => $this->whenLoaded('student', fn () => $this->student ? new StudentSearchResource($this->student) : null),
             'academic_year' => $this->whenLoaded('academicYear', fn () => $this->academicYear ? [
                 'id' => $this->academicYear->id,
@@ -72,6 +79,14 @@ class EnrollmentResource extends JsonResource
 
             'approved_by' => $this->whenLoaded('approvedBy', fn () => $this->approvedBy?->name ?? null),
             'approved_at' => $this->approved_at?->toISOString(),
+            'principal_approved_by' => $this->whenLoaded('principalApprovedBy', fn () => $this->principalApprovedBy?->name ?? null),
+            'principal_approved_at' => $this->principal_approved_at?->toISOString(),
+            'registrar_reviewed_by' => $this->whenLoaded('registrarReviewedBy', fn () => $this->registrarReviewedBy?->name ?? null),
+            'registrar_reviewed_at' => $this->registrar_reviewed_at?->toISOString(),
+            'payment_recorded_by' => $this->whenLoaded('paymentRecordedBy', fn () => $this->paymentRecordedBy?->name ?? null),
+            'payment_recorded_at' => $this->payment_recorded_at?->toISOString(),
+            'final_checked_by' => $this->whenLoaded('finalCheckedBy', fn () => $this->finalCheckedBy?->name ?? null),
+            'final_checked_at' => $this->final_checked_at?->toISOString(),
             'rejected_by' => $this->whenLoaded('rejectedBy', fn () => $this->rejectedBy?->name ?? null),
             'rejected_at' => $this->rejected_at?->toISOString(),
             'rejection_reason' => $this->rejection_reason,

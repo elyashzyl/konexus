@@ -13,10 +13,13 @@ interface Application {
 
 const TUITION_PLAN = 'School Tuition Plan';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialTuitionPlan?: string | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { tuition_plan: string }] }>();
 
@@ -27,7 +30,7 @@ const submit = async () => {
     processing.value = true;
 
     try {
-        await api.put<{ data: { tuition_plan: string } }>(`/public/enrollments/${props.application.id}/details`, {
+        await api.put<{ data: { tuition_plan: string } }>(`${props.apiBase}/${props.application.id}/details`, {
             tuition_plan: plan.value,
         });
         toast.success('School fees plan saved.');

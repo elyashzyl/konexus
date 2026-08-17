@@ -16,6 +16,23 @@ const portal = computed(() => {
 
 const roleLabel = computed(() => portal.value?.label ?? 'School staff');
 
+const SIDEBAR_MODULE_KEYS: Record<string, string[]> = {
+    registrar: ['enrollment-operations', 'enrollments', 'students', 'notifications', 'announcements'],
+    principal: ['enrollment-approvals', 'announcements'],
+    'finance-officer': ['enrollment-payments', 'announcements'],
+    'guidance-counselor': ['announcements'],
+    'school-nurse': ['announcements'],
+    librarian: ['announcements'],
+    'hr-officer': ['announcements'],
+    'inventory-officer': ['announcements'],
+};
+
+const visibleModules = computed(() => {
+    const sidebarKeys = SIDEBAR_MODULE_KEYS[portal.value?.role ?? ''] ?? [];
+
+    return (portal.value?.modules ?? []).filter((module) => !sidebarKeys.includes(module.key));
+});
+
 function moduleHref(key: string): string | null {
     if (key === 'announcements') {
         return `${route.path}/announcements`;
@@ -23,6 +40,26 @@ function moduleHref(key: string): string | null {
 
     if (key === 'enrollment-operations') {
         return `${route.path}/enrollment-operations`;
+    }
+
+    if (key === 'enrollments') {
+        return `${route.path}/enrollments`;
+    }
+
+    if (key === 'students') {
+        return `${route.path}/students`;
+    }
+
+    if (key === 'notifications') {
+        return `${route.path}/notifications`;
+    }
+
+    if (key === 'enrollment-approvals') {
+        return `${route.path}/enrollment-approvals`;
+    }
+
+    if (key === 'enrollment-payments') {
+        return `${route.path}/enrollment-payments`;
     }
 
     if (key === 'online-enrollment') {
@@ -107,7 +144,7 @@ function moduleHref(key: string): string | null {
 
                 <div class="portal-rise mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div
-                        v-for="(module, index) in portal?.modules ?? []"
+                        v-for="(module, index) in visibleModules"
                         :key="module.key"
                         class="group flex flex-col justify-between gap-8 rounded-2xl border border-border/60 bg-card/50 p-6 transition-colors hover:border-primary/25"
                     >
@@ -130,6 +167,17 @@ function moduleHref(key: string): string | null {
                             Managed by the school office
                         </div>
                     </div>
+                </div>
+
+                <div
+                    v-if="visibleModules.length === 0"
+                    class="portal-rise mt-8 rounded-2xl border border-border/60 bg-card/50 p-8 text-center"
+                    style="animation-delay: 80ms"
+                >
+                    <p class="font-display text-xl font-medium text-foreground">Everything is in the sidebar</p>
+                    <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                        All your workspace modules are listed in the navigation on the left, so there's nothing duplicated here.
+                    </p>
                 </div>
             </section>
 

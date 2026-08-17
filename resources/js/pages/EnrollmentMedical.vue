@@ -35,10 +35,13 @@ const HOSPITAL_OPTIONS = [
     { value: 'nearest-hospital', label: 'Nearest Hospital' },
 ];
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialMedical?: Record<string, unknown> | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { medical_history: Record<string, unknown> }] }>();
 
@@ -85,7 +88,7 @@ const submit = async () => {
 
     try {
         await api.put<{ data: { medical_history: Record<string, unknown> } }>(
-            `/public/enrollments/${props.application.id}/details`,
+            `${props.apiBase}/${props.application.id}/details`,
             { medical_history: payload },
         );
         toast.success('Medical history saved.');

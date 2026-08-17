@@ -23,12 +23,12 @@ class EnrollmentPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->isRegistrar($user) || parent::viewAny($user);
+        return $this->isRegistrar($user) || $this->isPrincipal($user) || $this->isFinanceOfficer($user) || parent::viewAny($user);
     }
 
     public function view(User $user, mixed $model): bool
     {
-        return $this->isRegistrar($user) || parent::view($user, $model);
+        return $this->isRegistrar($user) || $this->isPrincipal($user) || $this->isFinanceOfficer($user) || parent::view($user, $model);
     }
 
     public function create(User $user): bool
@@ -41,9 +41,34 @@ class EnrollmentPolicy extends BasePolicy
         return $this->isRegistrar($user) || parent::update($user, $model);
     }
 
+    public function delete(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || parent::delete($user, $model);
+    }
+
     public function verify(User $user, mixed $model): bool
     {
         return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.verify');
+    }
+
+    public function principalApprove(User $user, mixed $model): bool
+    {
+        return $this->isPrincipal($user) || $this->authorize($user, 'enrollment.principal-approve');
+    }
+
+    public function registrarReview(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.registrar-review');
+    }
+
+    public function recordPayment(User $user, mixed $model): bool
+    {
+        return $this->isFinanceOfficer($user) || $this->authorize($user, 'enrollment.record-payment');
+    }
+
+    public function finalCheck(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || $this->authorize($user, 'enrollment.final-check');
     }
 
     public function approve(User $user, mixed $model): bool
@@ -53,7 +78,7 @@ class EnrollmentPolicy extends BasePolicy
 
     public function reject(User $user, mixed $model): bool
     {
-        return $this->authorize($user, 'enrollment.reject');
+        return $this->isRegistrar($user) || $this->isPrincipal($user) || $this->isFinanceOfficer($user) || $this->authorize($user, 'enrollment.reject');
     }
 
     public function withdraw(User $user, mixed $model): bool
@@ -129,5 +154,15 @@ class EnrollmentPolicy extends BasePolicy
     private function isRegistrar(User $user): bool
     {
         return $user->hasRole(RoleEnum::REGISTRAR->roleName());
+    }
+
+    private function isPrincipal(User $user): bool
+    {
+        return $user->hasRole(RoleEnum::PRINCIPAL->roleName());
+    }
+
+    private function isFinanceOfficer(User $user): bool
+    {
+        return $user->hasRole(RoleEnum::FINANCE_OFFICER->roleName());
     }
 }

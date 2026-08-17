@@ -5,6 +5,7 @@ namespace Tests\Feature\Modules;
 use App\Enums\RoleEnum;
 use App\Models\AcademicYear;
 use App\Models\Campus;
+use App\Models\Enrollment;
 use App\Models\EnrollmentDocument;
 use App\Models\EnrollmentRequirement;
 use App\Models\GradeLevel;
@@ -40,6 +41,22 @@ class EnrollmentModulesTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole(RoleEnum::REGISTRAR->roleName());
+
+        return $user;
+    }
+
+    private function principal(): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(RoleEnum::PRINCIPAL->roleName());
+
+        return $user;
+    }
+
+    private function financeOfficer(): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(RoleEnum::FINANCE_OFFICER->roleName());
 
         return $user;
     }
@@ -101,7 +118,7 @@ class EnrollmentModulesTest extends TestCase
 
     public function test_registrar_can_run_the_enrollment_review_and_completion_workflow(): void
     {
-        $this->actingAs($this->registrar(), 'sanctum');
+        $this->actingAs($this->superAdmin(), 'sanctum');
 
         EnrollmentRequirement::factory()->create(['applicable_grade_levels' => null, 'applicable_enrollment_types' => null]);
 
@@ -117,9 +134,10 @@ class EnrollmentModulesTest extends TestCase
         $this->getJson('/api/v1/enrollments/statistics')->assertOk();
         $this->patchJson("/api/v1/enrollments/{$id}/requirements/{$requirementId}", ['status' => 'verified'])->assertOk();
         $this->postJson("/api/v1/enrollments/{$id}/submit")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/verify")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/approve")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/complete")
+        $this->postJson("/api/v1/enrollments/{$id}/principal-approve")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/registrar-review")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/record-payment")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/final-check")
             ->assertOk()
             ->assertJsonPath('data.status', 'officially-enrolled');
     }
@@ -220,10 +238,10 @@ class EnrollmentModulesTest extends TestCase
             ->assertJsonPath('data.status', 'verified');
 
         $this->postJson("/api/v1/enrollments/{$id}/submit")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/verify")->assertOk();
-
-        $this->postJson("/api/v1/enrollments/{$id}/approve")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/complete")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/principal-approve")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/registrar-review")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/record-payment")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/final-check")->assertOk();
 
         $this->getJson("/api/v1/enrollments/{$id}")
             ->assertOk()
@@ -244,9 +262,10 @@ class EnrollmentModulesTest extends TestCase
 
         $this->patchJson("/api/v1/enrollments/{$id}/requirements/{$created['requirements'][0]['id']}", ['status' => 'verified'])->assertOk();
         $this->postJson("/api/v1/enrollments/{$id}/submit")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/verify")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/approve")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/complete")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/principal-approve")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/registrar-review")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/record-payment")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/final-check")->assertOk();
 
         $this->postJson("/api/v1/enrollments/{$id}/withdraw", ['reason' => 'moved abroad'])
             ->assertStatus(422);
@@ -341,9 +360,10 @@ class EnrollmentModulesTest extends TestCase
 
         $this->patchJson("/api/v1/enrollments/{$id}/requirements/{$created['requirements'][0]['id']}", ['status' => 'verified'])->assertOk();
         $this->postJson("/api/v1/enrollments/{$id}/submit")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/verify")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/approve")->assertOk();
-        $this->postJson("/api/v1/enrollments/{$id}/complete")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/principal-approve")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/registrar-review")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/record-payment")->assertOk();
+        $this->postJson("/api/v1/enrollments/{$id}/final-check")->assertOk();
 
         // Second student tries to enroll into the full section — blocked.
         $this->postJson('/api/v1/enrollments', $base + ['student_id' => $studentTwo->id])
@@ -359,6 +379,85 @@ class EnrollmentModulesTest extends TestCase
             'enrollment_id' => $second['id'],
             'section_id' => $fullSection->id,
         ]);
+    }
+
+    public function test_enrollment_approval_chain_is_role_gated(): void
+    {
+        EnrollmentRequirement::factory()->create(['applicable_grade_levels' => null, 'applicable_enrollment_types' => null]);
+
+        $student = Student::factory()->create();
+
+        $admin = $this->superAdmin();
+        $created = $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/enrollments', $this->payload($student))
+            ->assertCreated()
+            ->json('data');
+
+        $id = $created['id'];
+
+        // A registrar cannot act as the principal.
+        $this->actingAs($this->registrar(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/principal-approve")
+            ->assertStatus(403);
+
+        // Submit the draft so it awaits principal approval.
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/submit")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'for-principal-approval');
+
+        // The principal approves, moving the record to registrar review.
+        $this->actingAs($this->principal(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/principal-approve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'for-registrar-review');
+
+        // A principal cannot record the payment; only the finance officer can.
+        $this->actingAs($this->principal(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/record-payment")
+            ->assertStatus(403);
+
+        $this->actingAs($this->registrar(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/registrar-review")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'for-payment');
+
+        $this->actingAs($this->financeOfficer(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/record-payment", ['payment_status' => 'paid', 'down_payment' => 2500])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'for-final-check');
+
+        // Verify the requirement so the registrar can complete the final check.
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/enrollments/{$id}/requirements/{$created['requirements'][0]['id']}", ['status' => 'verified'])
+            ->assertOk();
+
+        // The registrar completes the final check and official enrollment.
+        $this->actingAs($this->registrar(), 'sanctum')
+            ->postJson("/api/v1/enrollments/{$id}/final-check")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'officially-enrolled');
+
+        $this->assertDatabaseHas('enrollments', [
+            'id' => $id,
+            'status' => 'officially-enrolled',
+            'payment_status' => 'paid',
+        ]);
+    }
+
+    public function test_forward_pending_application_to_principal(): void
+    {
+        $this->actingAs($this->superAdmin(), 'sanctum');
+
+        $student = Student::factory()->create();
+        $enrollment = Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'status' => 'pending',
+        ]);
+
+        $this->postJson("/api/v1/enrollments/{$enrollment->id}/forward-to-principal")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'for-principal-approval');
     }
 
     public function test_uploaded_documents_require_authentication_to_download(): void

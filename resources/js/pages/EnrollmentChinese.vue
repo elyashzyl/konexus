@@ -15,11 +15,14 @@ interface Application {
     reference_number: string;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     levels: string[];
     initialChinese?: Record<string, unknown> | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { chinese_details: Record<string, unknown> }] }>();
 
@@ -47,7 +50,7 @@ const submit = async () => {
 
     try {
         await api.put<{ data: { chinese_details: Record<string, unknown> } }>(
-            `/public/enrollments/${props.application.id}/details`,
+            `${props.apiBase}/${props.application.id}/details`,
             { chinese_details: payload },
         );
         toast.success('Chinese class details saved.');

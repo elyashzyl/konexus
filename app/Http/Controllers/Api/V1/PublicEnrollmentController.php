@@ -118,8 +118,26 @@ class PublicEnrollmentController extends ApiController
      */
     public function store(PublicEnrollmentRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        $enrollment = $this->createApplication($request->validated(), EnrollmentStatus::PENDING->value, true);
 
+        return $this->success([
+            'id' => $enrollment->id,
+            'reference_number' => $enrollment->reference_number,
+            'status' => $enrollment->status,
+            'expires_at' => $enrollment->application_expires_at?->toISOString(),
+        ], 'Enrollment application submitted.', 201);
+    }
+
+    /**
+     * Create the enrollment application record for the Part 1 payload. When
+     * `$markSubmitted` is true the application is stamped as submitted with the
+     * retention expiry (online flow); otherwise it is left as a fresh draft
+     * (walk-in flow) that can be submitted through the approval chain later.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function createApplication(array $data, string $status, bool $markSubmitted = false): Enrollment
+    {
         $seq = ((int) Enrollment::withTrashed()->max('id')) + 1;
         $yearCode = (string) (AcademicYear::query()->find($data['academic_year_id'])?->code ?? now()->year);
         $padded = str_pad((string) $seq, 6, '0', STR_PAD_LEFT);
@@ -134,7 +152,7 @@ class PublicEnrollmentController extends ApiController
             ->where('is_active', true)
             ->value('id');
 
-        $enrollment = Enrollment::create([
+        $attributes = [
             'school_profile_id' => $data['school_profile_id'],
             'campus_id' => $data['campus_id'],
             'grade_level_id' => $gradeLevelId,
@@ -147,19 +165,17 @@ class PublicEnrollmentController extends ApiController
             'mobile_number' => $data['mobile_number'],
             'enrollment_number' => 'ENR-'.$yearCode.'-'.$padded,
             'reference_number' => 'KXN-EN-'.$yearCode.'-'.$padded,
-            'status' => EnrollmentStatus::PENDING->value,
+            'status' => $status,
             'enrollment_type' => $data['status'],
-            'enrollment_date' => now()->toDateString(),
-            'application_submitted_at' => now(),
-            'application_expires_at' => now()->addDays(self::APPLICATION_RETENTION_DAYS),
-        ]);
+        ];
 
-        return $this->success([
-            'id' => $enrollment->id,
-            'reference_number' => $enrollment->reference_number,
-            'status' => $enrollment->status,
-            'expires_at' => $enrollment->application_expires_at?->toISOString(),
-        ], 'Enrollment application submitted.', 201);
+        if ($markSubmitted) {
+            $attributes['enrollment_date'] = now()->toDateString();
+            $attributes['application_submitted_at'] = now();
+            $attributes['application_expires_at'] = now()->addDays(self::APPLICATION_RETENTION_DAYS);
+        }
+
+        return Enrollment::create($attributes);
     }
 
     /**
@@ -173,6 +189,7 @@ class PublicEnrollmentController extends ApiController
                 'id' => $enrollment->id,
                 'reference_number' => $enrollment->reference_number,
                 'status' => $enrollment->status,
+                'enrollment_type' => $enrollment->enrollment_type,
                 'school_profile_id' => $enrollment->school_profile_id,
                 'campus_id' => $enrollment->campus_id,
                 'academic_year_id' => $enrollment->academic_year_id,

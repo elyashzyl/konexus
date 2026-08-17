@@ -186,8 +186,6 @@ const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: '
 const chineseMandatory = computed(() => ['pre-school', 'grade-school'].includes(form.value.department));
 const showStrand = computed(() => form.value.department === 'senior-high');
 const chineseApplicable = computed(() => track.value === 'chinese');
-const showSchoolSelector = computed(() => options.value.schools.length > 1);
-const showCampusSelector = computed(() => options.value.campuses.length > 1);
 
 const levelOptions = computed<GradeLevel[]>(() => {
     const filters = departmentLevelFilters[form.value.department];
@@ -562,7 +560,7 @@ const formatExpiry = (iso: string): string => {
                 <RouterLink :to="APP_ROUTES.landing.path" class="flex items-center gap-2.5">
                     <AppLogoIcon class="size-8 rounded-md" />
                     <span
-                        class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)] font-display text-lg font-semibold tracking-[-0.01em] text-transparent"
+                        class="bg-gradient-to-r from-[#32483c] to-[hsl(26_57%_40%)] bg-clip-text font-display text-lg font-semibold tracking-[-0.01em] text-transparent"
                     >
                         KONEXUS
                     </span>
@@ -651,44 +649,49 @@ const formatExpiry = (iso: string): string => {
                         </CardHeader>
 
                         <CardContent class="grid gap-6">
-                            <div v-if="showSchoolSelector" class="grid gap-2">
-                                <Label for="school_profile_id">School</Label>
-                                <Select v-model="form.school_profile_id" :disabled="optionsLoading">
-                                    <SelectTrigger id="school_profile_id" class="h-9">
-                                        <SelectValue :placeholder="optionsLoading ? 'Loading…' : 'Select school'" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem v-for="school in options.schools" :key="school.id" :value="String(school.id)">
-                                            {{ school.name }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <InputError :message="errors.school_profile_id" />
-                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="grid gap-2">
+                                    <Label for="school_profile_id">School</Label>
+                                    <Select v-model="form.school_profile_id" :disabled="optionsLoading">
+                                        <SelectTrigger id="school_profile_id" class="h-9">
+                                            <SelectValue :placeholder="optionsLoading ? 'Loading…' : 'Select school'" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem v-for="school in options.schools" :key="school.id" :value="String(school.id)">
+                                                {{ school.name }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="errors.school_profile_id" />
+                                </div>
 
-                            <div v-if="showCampusSelector || form.school_profile_id" class="grid gap-2">
-                                <Label for="campus_id">Campus</Label>
-                                <Select v-model="form.campus_id" :disabled="optionsLoading || !form.school_profile_id || options.campuses.length === 0">
-                                    <SelectTrigger id="campus_id" class="h-9">
-                                        <SelectValue
-                                            :placeholder="
-                                                optionsLoading
-                                                    ? 'Loading…'
-                                                    : !form.school_profile_id
-                                                      ? 'Select a school first'
-                                                      : options.campuses.length === 0
-                                                        ? 'No campuses available'
-                                                        : 'Select campus'
-                                            "
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem v-for="campus in options.campuses" :key="campus.id" :value="String(campus.id)">
-                                            {{ campus.name }}
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <InputError :message="errors.campus_id" />
+                                <div class="grid gap-2">
+                                    <Label for="campus_id">Campus</Label>
+                                    <Select
+                                        v-model="form.campus_id"
+                                        :disabled="optionsLoading || !form.school_profile_id || options.campuses.length === 0"
+                                    >
+                                        <SelectTrigger id="campus_id" class="h-9">
+                                            <SelectValue
+                                                :placeholder="
+                                                    optionsLoading
+                                                        ? 'Loading…'
+                                                        : !form.school_profile_id
+                                                          ? 'Select a school first'
+                                                          : options.campuses.length === 0
+                                                            ? 'No campuses available'
+                                                            : 'Select campus'
+                                                "
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem v-for="campus in options.campuses" :key="campus.id" :value="String(campus.id)">
+                                                {{ campus.name }}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError :message="errors.campus_id" />
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">

@@ -50,10 +50,13 @@ interface InitialFamily {
     family_monthly_income: string | null;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialFamily?: Record<string, unknown> | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { family: Record<string, unknown> }] }>();
 
@@ -205,7 +208,7 @@ const submit = async () => {
     }
 
     try {
-        const response = await api.put<{ data: { family: Record<string, unknown> } }>(`/public/enrollments/${props.application.id}/family`, payload);
+        const response = await api.put<{ data: { family: Record<string, unknown> } }>(`${props.apiBase}/${props.application.id}/family`, payload);
         toast.success('Family background saved.');
         emit('submitted', { family: response.data.data.family });
     } catch (error) {

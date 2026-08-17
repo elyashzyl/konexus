@@ -10,6 +10,176 @@ import { useWorkspaceStore } from '@/stores/workspace';
 import type { RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
+// Remembers the last visited authenticated page so that a fresh app load
+// returns the user there instead of the dashboard/landing "start".
+const LAST_ROUTE_STORAGE_KEY = 'konexus_last_route';
+
+function getStoredLastPath(): string | null {
+    try {
+        return localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function storeLastPath(path: string): void {
+    try {
+        localStorage.setItem(LAST_ROUTE_STORAGE_KEY, path);
+    } catch {
+        // Ignore storage failures (e.g. private browsing mode).
+    }
+}
+
+const isStartPath = (path: string): boolean => path === APP_ROUTES.dashboard.path || path === APP_ROUTES.landing.path;
+
+let isInitialNavigation = true;
+
+// Keeps the scroll position per visited page for the duration of the tab
+// session, so navigating away and back (or reloading) doesn't reset the page.
+const SCROLL_POSITIONS_KEY = 'konexus_scroll_positions';
+
+type ScrollPositions = Record<string, number>;
+
+function readScrollPositions(): ScrollPositions {
+    try {
+        const raw = sessionStorage.getItem(SCROLL_POSITIONS_KEY);
+        return raw ? (JSON.parse(raw) as ScrollPositions) : {};
+    } catch {
+        return {};
+    }
+}
+
+function writeScrollPositions(positions: ScrollPositions): void {
+    try {
+        sessionStorage.setItem(SCROLL_POSITIONS_KEY, JSON.stringify(positions));
+    } catch {
+        // Ignore storage failures (e.g. private browsing mode).
+    }
+}
+
+const pageKey = (fullPath: string): string => fullPath.split('#')[0];
+
+function saveScrollPosition(path: string, top: number): void {
+    const positions = readScrollPositions();
+    positions[pageKey(path)] = top;
+    writeScrollPositions(positions);
+}
+
+export function restoreScrollPosition(path: string): number | null {
+    return readScrollPositions()[pageKey(path)] ?? null;
+}
+
+function persistCurrentScroll(): void {
+    saveScrollPosition(window.location.pathname + window.location.search, window.scrollY);
+}
+
+// The browser's own reload scroll restoration would fight our per-page restore.
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+
+// Reserves vertical space below the app so the saved position can be reached
+// before the routed content has rendered. Without it the browser clamps the
+// scroll to the top and the later jump back down looks like a glitch.
+const SCROLL_SPACER_SELECTOR = '[data-scroll-spacer]';
+
+function removeScrollSpacer(): void {
+    document.querySelector(SCROLL_SPACER_SELECTOR)?.remove();
+}
+
+function addScrollSpacer(top: number): void {
+    removeScrollSpacer();
+    const spacer = document.createElement('div');
+    spacer.setAttribute('data-scroll-spacer', '');
+    spacer.style.height = `${top + window.innerHeight}px`;
+    document.body.appendChild(spacer);
+}
+
+export function prepareScrollRestore(): void {
+    const storedTop = restoreScrollPosition(window.location.pathname + window.location.search);
+
+    if (storedTop !== null && storedTop > 0) {
+        addScrollSpacer(storedTop);
+        lastProgrammaticScrollAt = Date.now();
+        window.scrollTo({ top: storedTop, behavior: 'auto' });
+    }
+}
+
+let lastProgrammaticScrollAt = 0;
+let userScrolled = false;
+let restoreTimeoutId: number | undefined;
+
+function clearPendingScrollRestores(): void {
+    if (restoreTimeoutId !== undefined) {
+        window.clearTimeout(restoreTimeoutId);
+        restoreTimeoutId = undefined;
+    }
+}
+
+// Restores the saved position immediately (a spacer guarantees it isn't
+// clamped), then waits for the real content to be tall enough to remove the
+// spacer without jumping.
+function restoreScrollAfterPaint(top: number): void {
+    clearPendingScrollRestores();
+    userScrolled = false;
+    lastProgrammaticScrollAt = Date.now();
+    addScrollSpacer(top);
+    window.scrollTo({ top, behavior: 'auto' });
+    const deadline = Date.now() + 4000;
+
+    const attempt = (): void => {
+        if (userScrolled) {
+            removeScrollSpacer();
+            return;
+        }
+
+        const spacer = document.querySelector(SCROLL_SPACER_SELECTOR);
+        const spacerHeight = spacer instanceof HTMLElement ? spacer.offsetHeight : 0;
+        const realMaxScroll = document.documentElement.scrollHeight - spacerHeight - window.innerHeight;
+
+        if (realMaxScroll >= top - 2) {
+            removeScrollSpacer();
+
+            if (Math.abs(window.scrollY - top) > 2) {
+                lastProgrammaticScrollAt = Date.now();
+                window.scrollTo({ top, behavior: 'auto' });
+            }
+            return;
+        }
+
+        if (Date.now() < deadline) {
+            restoreTimeoutId = window.setTimeout(attempt, 200);
+        } else {
+            removeScrollSpacer();
+        }
+    };
+
+    attempt();
+}
+
+{
+    let timer: number | undefined;
+
+    window.addEventListener(
+        'scroll',
+        () => {
+            if (Date.now() - lastProgrammaticScrollAt > 300) {
+                userScrolled = true;
+                clearPendingScrollRestores();
+                removeScrollSpacer();
+
+                if (timer !== undefined) {
+                    window.clearTimeout(timer);
+                }
+                timer = window.setTimeout(persistCurrentScroll, 200);
+            }
+        },
+        { passive: true },
+    );
+
+    window.addEventListener('pagehide', persistCurrentScroll);
+}
+
 const routes: RouteRecordRaw[] = [
     {
         path: '/',
@@ -142,6 +312,25 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
+    scrollBehavior(to, _from, savedPosition) {
+        if (savedPosition) {
+            lastProgrammaticScrollAt = Date.now();
+            return savedPosition;
+        }
+
+        const storedTop = restoreScrollPosition(to.fullPath);
+
+        if (storedTop !== null && storedTop > 0) {
+            lastProgrammaticScrollAt = Date.now();
+            return { top: storedTop, behavior: 'auto' };
+        }
+
+        if (to.hash) {
+            return { el: to.hash, behavior: 'smooth' };
+        }
+
+        return { top: 0 };
+    },
 });
 
 router.beforeEach(async (to) => {
@@ -154,6 +343,15 @@ router.beforeEach(async (to) => {
     if (auth.isAuthenticated) {
         const workspace = useWorkspaceStore();
         await workspace.initialize();
+    }
+
+    if (auth.isAuthenticated && isInitialNavigation && isStartPath(to.path)) {
+        const lastPath = getStoredLastPath();
+
+        if (lastPath && lastPath !== to.fullPath && !lastPath.startsWith('/auth')) {
+            isInitialNavigation = false;
+            return lastPath;
+        }
     }
 
     if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -208,9 +406,23 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to) => {
+    isInitialNavigation = false;
+    clearPendingScrollRestores();
     const title = to.meta.title;
 
     document.title = title ? `${title} - ${APP_NAME}` : APP_NAME;
+
+    if (to.meta.requiresAuth) {
+        storeLastPath(to.fullPath);
+    }
+
+    const storedTop = restoreScrollPosition(to.fullPath);
+
+    if (storedTop !== null && storedTop > 0) {
+        restoreScrollAfterPaint(storedTop);
+    } else {
+        removeScrollSpacer();
+    }
 });
 
 export default router;

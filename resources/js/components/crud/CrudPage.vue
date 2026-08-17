@@ -25,6 +25,10 @@ const props = withDefaults(
         createLabel?: string;
         searchable?: boolean;
         singularLabel?: string;
+        /** When set, the primary "New" action navigates to this route instead of opening the create dialog. */
+        createRoute?: string;
+        /** When true, hide the "New" action and per-row edit/delete buttons (read-only listing). */
+        readOnly?: boolean;
     }>(),
     {
         description: '',
@@ -32,6 +36,8 @@ const props = withDefaults(
         createLabel: 'New',
         searchable: true,
         singularLabel: 'record',
+        createRoute: '',
+        readOnly: false,
     },
 );
 
@@ -174,6 +180,8 @@ loadOptionSources();
         :description="description"
         :create-label="createLabel"
         :searchable="searchable"
+        :create-route="createRoute"
+        :read-only="readOnly"
         @create="openCreate"
         @edit="openEdit"
         @remove="askRemove"

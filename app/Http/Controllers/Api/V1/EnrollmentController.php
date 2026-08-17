@@ -184,7 +184,7 @@ class EnrollmentController extends CrudController
     }
 
     /**
-     * Submit the draft enrollment (Draft -> Pending).
+     * Submit the draft enrollment (Draft -> For Principal Approval).
      */
     public function submit(int $id): JsonResponse
     {
@@ -195,6 +195,108 @@ class EnrollmentController extends CrudController
         return $this->success(
             new EnrollmentResource($this->service->submit($enrollment)),
             'Enrollment submitted.'
+        );
+    }
+
+    /**
+     * Forward a Pending public application to the principal.
+     */
+    public function forwardToPrincipal(int $id): JsonResponse
+    {
+        $enrollment = $this->service->find($id);
+
+        $this->authorize('update', $enrollment);
+
+        return $this->success(
+            new EnrollmentResource($this->service->forwardToPrincipal($enrollment)),
+            'Application forwarded to the principal.'
+        );
+    }
+
+    /**
+     * Principal approves the enrollment (For Principal Approval -> Registrar Review).
+     */
+    public function principalApprove(int $id): JsonResponse
+    {
+        $enrollment = $this->service->find($id);
+
+        $this->authorize('principalApprove', $enrollment);
+
+        return $this->success(
+            new EnrollmentResource($this->service->principalApprove($enrollment)),
+            'Enrollment approved by the principal.'
+        );
+    }
+
+    /**
+     * Registrar reviews and places the enrollment (Registrar Review -> For Payment).
+     */
+    public function registrarReview(Request $request, int $id): JsonResponse
+    {
+        $enrollment = $this->service->find($id);
+
+        $this->authorize('registrarReview', $enrollment);
+
+        $data = $request->only([
+            'academic_term_id',
+            'grade_level_id',
+            'section_id',
+            'curriculum_program_id',
+            'program_cluster',
+            'elective_selections',
+            'department',
+            'strand',
+            'track',
+            'capacity_override_reason',
+            'capacity_override',
+        ]);
+
+        return $this->success(
+            new EnrollmentResource($this->service->registrarReview($enrollment, $data)),
+            'Enrollment reviewed by the registrar.'
+        );
+    }
+
+    /**
+     * Accounting records the payment (For Payment -> For Final Check).
+     */
+    public function recordPayment(Request $request, int $id): JsonResponse
+    {
+        $enrollment = $this->service->find($id);
+
+        $this->authorize('recordPayment', $enrollment);
+
+        $data = $request->only([
+            'payment_status',
+            'down_payment',
+            'payment_schedule_date',
+            'payment_schedule_details',
+        ]);
+
+        return $this->success(
+            new EnrollmentResource($this->service->recordPayment($enrollment, $data)),
+            'Payment recorded.'
+        );
+    }
+
+    /**
+     * Registrar final check and official enrollment (For Final Check -> Officially Enrolled).
+     */
+    public function finalCheck(Request $request, int $id): JsonResponse
+    {
+        $enrollment = $this->service->find($id);
+
+        $this->authorize('finalCheck', $enrollment);
+
+        $date = $request->filled('date_enrolled') ? Carbon::parse($request->string('date_enrolled'))->toDateString() : null;
+
+        $override = $request->filled('capacity_override_reason')
+            ? $request->string('capacity_override_reason')->toString()
+            : null;
+
+        return $this->success(
+            new EnrollmentResource($this->service->finalCheck($enrollment, $date, $override)),
+            'Enrollment finalized.'
         );
     }
 

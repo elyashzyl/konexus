@@ -58,6 +58,7 @@ use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\SubscriptionPlanController;
 use App\Http\Controllers\Api\V1\SubscriptionSettingController;
 use App\Http\Controllers\Api\V1\SystemHealthController;
+use App\Http\Controllers\Api\V1\WalkInEnrollmentController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\SystemSettingsGroupController;
 use App\Http\Controllers\Api\V1\TeacherAssignmentController;
@@ -268,6 +269,32 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
             Route::get('statistics', [EnrollmentController::class, 'statistics'])->name('statistics');
             Route::get('config', [EnrollmentController::class, 'config'])->name('config');
 
+            // Walk-in (manual) enrollment wizard – authenticated registrar flow
+            // that mirrors the public online enrollment parts.
+            $walkInMiddleware = ['roles:super-administrator,school-administrator,principal,registrar'];
+
+            Route::post('apply', [WalkInEnrollmentController::class, 'apply'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.apply');
+            Route::get('{enrollment}/application', [WalkInEnrollmentController::class, 'show'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.application');
+            Route::put('{enrollment}/student', [WalkInEnrollmentController::class, 'storeStudent'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.student');
+            Route::post('{enrollment}/student/photo', [WalkInEnrollmentController::class, 'storeStudentPhoto'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.student-photo');
+            Route::put('{enrollment}/family', [WalkInEnrollmentController::class, 'storeFamily'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.family');
+            Route::put('{enrollment}/details', [WalkInEnrollmentController::class, 'storeDetails'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.details');
+            Route::post('{enrollment}/signature', [WalkInEnrollmentController::class, 'storeSignature'])
+                ->middleware($walkInMiddleware)
+                ->name('walkin.signature');
+
             Route::get('/', [EnrollmentController::class, 'index'])->name('index');
             Route::post('/', [EnrollmentController::class, 'store'])->name('store');
             Route::get('/{id}', [EnrollmentController::class, 'show'])->name('show');
@@ -278,6 +305,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
             Route::delete('/{id}/force', [EnrollmentController::class, 'forceDestroy'])->name('force-destroy');
 
             Route::post('/{id}/submit', [EnrollmentController::class, 'submit'])->name('submit');
+            Route::post('/{id}/forward-to-principal', [EnrollmentController::class, 'forwardToPrincipal'])->name('forward-to-principal');
+            Route::post('/{id}/principal-approve', [EnrollmentController::class, 'principalApprove'])->name('principal-approve');
+            Route::post('/{id}/registrar-review', [EnrollmentController::class, 'registrarReview'])->name('registrar-review');
+            Route::post('/{id}/record-payment', [EnrollmentController::class, 'recordPayment'])->name('record-payment');
+            Route::post('/{id}/final-check', [EnrollmentController::class, 'finalCheck'])->name('final-check');
             Route::post('/{id}/verify', [EnrollmentController::class, 'verify'])->name('verify');
             Route::post('/{id}/approve', [EnrollmentController::class, 'approve'])->name('approve');
             Route::post('/{id}/reject', [EnrollmentController::class, 'reject'])->name('reject');

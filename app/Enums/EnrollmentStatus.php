@@ -13,6 +13,10 @@ enum EnrollmentStatus: string
 {
     case DRAFT = 'draft';
     case PENDING = 'pending';
+    case FOR_PRINCIPAL_APPROVAL = 'for-principal-approval';
+    case FOR_REGISTRAR_REVIEW = 'for-registrar-review';
+    case FOR_PAYMENT = 'for-payment';
+    case FOR_FINAL_CHECK = 'for-final-check';
     case FOR_VERIFICATION = 'for-verification';
     case REQUIREMENTS_INCOMPLETE = 'requirements-incomplete';
     case VERIFIED = 'verified';
@@ -34,6 +38,10 @@ enum EnrollmentStatus: string
         return [
             self::DRAFT->value,
             self::PENDING->value,
+            self::FOR_PRINCIPAL_APPROVAL->value,
+            self::FOR_REGISTRAR_REVIEW->value,
+            self::FOR_PAYMENT->value,
+            self::FOR_FINAL_CHECK->value,
             self::FOR_VERIFICATION->value,
             self::REQUIREMENTS_INCOMPLETE->value,
             self::VERIFIED->value,
@@ -76,6 +84,10 @@ enum EnrollmentStatus: string
         return match ($this) {
             self::DRAFT => 'Draft',
             self::PENDING => 'Pending',
+            self::FOR_PRINCIPAL_APPROVAL => 'For Principal Approval',
+            self::FOR_REGISTRAR_REVIEW => 'For Registrar Review',
+            self::FOR_PAYMENT => 'For Payment',
+            self::FOR_FINAL_CHECK => 'For Final Check',
             self::FOR_VERIFICATION => 'For Verification',
             self::REQUIREMENTS_INCOMPLETE => 'Requirements Incomplete',
             self::VERIFIED => 'Verified',

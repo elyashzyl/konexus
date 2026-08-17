@@ -18,12 +18,15 @@ interface SignatureRecord {
     signature_data: string;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     studentName: string;
     parentName: string;
     initialSignatures?: SignatureRecord[] | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [] }>();
 
@@ -49,12 +52,12 @@ const submit = async () => {
     processing.value = true;
 
     try {
-        await api.post(`/public/enrollments/${props.application.id}/signature`, {
+        await api.post(`${props.apiBase}/${props.application.id}/signature`, {
             role: 'student',
             signer_name: props.studentName.trim() || 'Student',
             signature_data: studentSignature.value,
         });
-        await api.post(`/public/enrollments/${props.application.id}/signature`, {
+        await api.post(`${props.apiBase}/${props.application.id}/signature`, {
             role: 'parent',
             signer_name: props.parentName.trim() || 'Parent/Guardian',
             signature_data: parentSignature.value,

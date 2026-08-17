@@ -11,6 +11,7 @@ import type { CrudColumn, CrudItem } from '@/types/crud';
 import type { LucideIcon } from 'lucide-vue-next';
 import { Pencil, Plus, RefreshCcw, RotateCcw, Search, Trash2 } from 'lucide-vue-next';
 import { computed, inject, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
 const store = inject<CrudStore>('crudStore')!;
 
@@ -25,12 +26,18 @@ withDefaults(
         createLabel?: string;
         searchable?: boolean;
         emptyMessage?: string;
+        /** When set, the primary "New" action navigates to this route instead of emitting `create`. */
+        createRoute?: string;
+        /** When true, hide the "New" action and per-row edit/delete buttons (read-only listing). */
+        readOnly?: boolean;
     }>(),
     {
         description: '',
         createLabel: 'New',
         searchable: true,
         emptyMessage: 'No records found.',
+        createRoute: '',
+        readOnly: false,
     },
 );
 
@@ -145,7 +152,12 @@ onMounted(() => {
                 :description="description"
             >
                 <template #actions>
-                    <Button @click="emit('create')"><Plus class="size-4" /> {{ createLabel }}</Button>
+                    <template v-if="!readOnly">
+                        <Button v-if="createRoute" as-child>
+                            <RouterLink :to="createRoute"><Plus class="size-4" /> {{ createLabel }}</RouterLink>
+                        </Button>
+                        <Button v-else @click="emit('create')"><Plus class="size-4" /> {{ createLabel }}</Button>
+                    </template>
                 </template>
             </AdminPageHeader>
 
@@ -156,7 +168,7 @@ onMounted(() => {
                         <Input v-model="store.search" class="pl-9" placeholder="Search…" @input="onSearchInput" />
                     </div>
 
-                    <Button variant="outline" size="sm" class="gap-2" @click="toggleTrash">
+                    <Button v-if="!readOnly" variant="outline" size="sm" class="gap-2" @click="toggleTrash">
                         <RefreshCcw v-if="store.trashed" class="size-4" />
                         <Trash2 v-else class="size-4" />
                         {{ store.trashed ? 'Active records' : 'Deleted records' }}
@@ -214,26 +226,26 @@ onMounted(() => {
                                     </TableCell>
                                     <TableCell class="text-right">
                                         <div class="inline-flex items-center gap-1">
-                                            <template v-if="store.trashed">
-                                                <Button variant="ghost" size="sm" class="gap-1 px-2 text-foreground" @click="emit('restore', item)">
-                                                    <RotateCcw class="size-4" />
-                                                    Restore
-                                                </Button>
-                                                <Button variant="ghost" size="sm" class="gap-1 px-2 text-destructive" @click="emit('force-remove', item)">
-                                                    <Trash2 class="size-4" />
-                                                    Delete
-                                                </Button>
-                                            </template>
-                                            <template v-else>
-                                                <Button variant="ghost" size="sm" class="gap-1 px-2" @click="emit('edit', item)">
-                                                    <Pencil class="size-4" />
-                                                    Edit
-                                                </Button>
-                                                <Button variant="ghost" size="sm" class="gap-1 px-2 text-destructive" @click="emit('remove', item)">
-                                                    <Trash2 class="size-4" />
-                                                    Delete
-                                                </Button>
-                                            </template>
+<template v-if="store.trashed">
+                                        <Button variant="ghost" size="sm" class="gap-1 px-2 text-foreground" @click="emit('restore', item)">
+                                            <RotateCcw class="size-4" />
+                                            Restore
+                                        </Button>
+                                        <Button variant="ghost" size="sm" class="gap-1 px-2 text-destructive" @click="emit('force-remove', item)">
+                                            <Trash2 class="size-4" />
+                                            Delete
+                                        </Button>
+                                    </template>
+                                    <template v-else-if="!readOnly">
+                                        <Button variant="ghost" size="sm" class="gap-1 px-2" @click="emit('edit', item)">
+                                            <Pencil class="size-4" />
+                                            Edit
+                                        </Button>
+                                        <Button variant="ghost" size="sm" class="gap-1 px-2 text-destructive" @click="emit('remove', item)">
+                                            <Trash2 class="size-4" />
+                                            Delete
+                                        </Button>
+                                    </template>
                                         </div>
                                     </TableCell>
                                 </TableRow>

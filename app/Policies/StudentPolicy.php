@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\RoleEnum;
 use App\Models\Student;
 use App\Models\User;
 
@@ -21,12 +22,40 @@ class StudentPolicy extends BasePolicy
 
     protected string $forceDeletePermission = 'student.force-delete';
 
+    public function viewAny(User $user): bool
+    {
+        return $this->isRegistrar($user) || $this->isPrincipal($user) || parent::viewAny($user);
+    }
+
+    public function view(User $user, mixed $model): bool
+    {
+        return $this->isRegistrar($user) || $this->isPrincipal($user) || parent::view($user, $model);
+    }
+
     /**
      * Review the personal, family, medical and history tabs of a student profile.
      */
     public function viewProfile(User $user, Student $student): bool
     {
-        return $this->hasPermission($user, 'student.view');
+        return $this->isRegistrar($user) || parent::viewProfile($user, $student);
+    }
+
+    /**
+     * View the enrollment and academic history of a student.
+     */
+    public function viewHistory(User $user, Student $student): bool
+    {
+        return $this->isRegistrar($user) || parent::viewHistory($user, $student);
+    }
+
+    private function isRegistrar(User $user): bool
+    {
+        return $user->hasRole(RoleEnum::REGISTRAR->roleName());
+    }
+
+    private function isPrincipal(User $user): bool
+    {
+        return $user->hasRole(RoleEnum::PRINCIPAL->roleName());
     }
 
     /**
@@ -59,14 +88,6 @@ class StudentPolicy extends BasePolicy
     public function updateFamily(User $user, Student $student): bool
     {
         return $this->hasPermission($user, 'student.family-update');
-    }
-
-    /**
-     * View the enrollment and academic history of a student.
-     */
-    public function viewHistory(User $user, Student $student): bool
-    {
-        return $this->hasPermission($user, 'student.history-view');
     }
 
     /**

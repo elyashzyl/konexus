@@ -2,6 +2,22 @@
 import PortalEmptyState from '@/components/portal/PortalEmptyState.vue';
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import api, { extractError } from '@/lib/api';
 import type { Paginated } from '@/types/crud';
 import {
@@ -10,7 +26,6 @@ import {
     CheckCircle2,
     CircleAlert,
     ClipboardCheck,
-    FileCheck2,
     FilePenLine,
     GraduationCap,
     Laptop,
@@ -23,12 +38,16 @@ import {
     type LucideIcon,
 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 type EnrollmentStatus =
     | 'draft'
     | 'pending'
+    | 'for-principal-approval'
+    | 'for-registrar-review'
+    | 'for-payment'
+    | 'for-final-check'
     | 'for-verification'
     | 'requirements-incomplete'
     | 'verified'
@@ -50,10 +69,16 @@ type EnrollmentRecord = {
     enrollment_date: string | null;
     date_enrolled: string | null;
     requirements_met: boolean;
+    payment_status: string | null;
+    down_payment: string | number | null;
+    principal_approved_by: string | null;
+    registrar_reviewed_by: string | null;
+    payment_recorded_by: string | null;
+    final_checked_by: string | null;
     student: { name: string; student_number: string | null; lrn: string | null } | null;
     academic_year: { name: string } | null;
-    grade_level: { name: string } | null;
-    section: { name: string } | null;
+    grade_level: { id: number; name: string } | null;
+    section: { id: number; name: string; max_capacity: number } | null;
     campus: { name: string } | null;
 };
 
@@ -66,10 +91,12 @@ type EnrollmentStatistics = {
 
 type Transition = {
     label: string;
-    endpoint: 'verify' | 'approve' | 'complete';
+    endpoint: 'forward-to-principal' | 'final-check';
     confirmation: string;
     icon: LucideIcon;
 };
+
+type PlacementRow = { id: number; name: string; code: string; sequence?: number };
 
 const loading = ref(true);
 const refreshing = ref(false);
@@ -79,19 +106,34 @@ const records = ref<EnrollmentRecord[]>([]);
 const statistics = ref<EnrollmentStatistics | null>(null);
 const errorMessage = ref<string | null>(null);
 
+const route = useRoute();
+
+const portalBase = computed(() => {
+    const match = route.path.match(/^\/portal\/staff\/[^/]+/);
+
+    return match ? match[0] : '/portal/staff/registrar';
+});
+
+const placementTarget = ref<EnrollmentRecord | null>(null);
+const placementSaving = ref(false);
+const gradeLevels = ref<PlacementRow[]>([]);
+const sections = ref<(PlacementRow & { grade_level_id: number; max_capacity: number | null })[]>([]);
+const placementForm = ref<{ grade_level_id: number | null; section_id: number | null }>({ grade_level_id: null, section_id: null });
+
 const workflowSteps = [
     { title: 'Online application', description: 'Family submits the guided public form.', icon: Laptop },
-    { title: 'Requirements review', description: 'Registrar checks the submitted record and documents.', icon: ClipboardCheck },
-    { title: 'Placement & approval', description: 'Grade, section, program, and capacity are confirmed.', icon: BadgeCheck },
-    { title: 'Official enrollment', description: 'Roster and subject snapshots are materialized.', icon: GraduationCap },
+    { title: 'Principal approval', description: 'The principal signs off on admitting the learner.', icon: BadgeCheck },
+    { title: 'Registrar review & payment', description: 'Placement is set, then Accounting records the payment.', icon: ClipboardCheck },
+    { title: 'Final check & enrollment', description: 'Details are confirmed and the record is officially enrolled.', icon: GraduationCap },
 ];
 
 const statusOptions = computed(() => [
     { value: 'all', label: 'All records', count: statistics.value?.total ?? 0 },
     { value: 'pending', label: 'New applications', count: statistics.value?.per_status.pending ?? 0 },
-    { value: 'requirements-incomplete', label: 'Needs requirements', count: statistics.value?.per_status['requirements-incomplete'] ?? 0 },
-    { value: 'verified', label: 'Ready for approval', count: statistics.value?.per_status.verified ?? 0 },
-    { value: 'approved', label: 'Ready to enrol', count: statistics.value?.per_status.approved ?? 0 },
+    { value: 'for-principal-approval', label: 'Awaiting principal', count: statistics.value?.per_status['for-principal-approval'] ?? 0 },
+    { value: 'for-registrar-review', label: 'Registrar review', count: statistics.value?.per_status['for-registrar-review'] ?? 0 },
+    { value: 'for-payment', label: 'Awaiting payment', count: statistics.value?.per_status['for-payment'] ?? 0 },
+    { value: 'for-final-check', label: 'Final check', count: statistics.value?.per_status['for-final-check'] ?? 0 },
     { value: 'officially-enrolled', label: 'Officially enrolled', count: statistics.value?.officially_enrolled ?? 0 },
 ]);
 
@@ -105,47 +147,37 @@ function selectStatus(status: 'all' | EnrollmentStatus): void {
 
 const metrics = computed(() => [
     { label: 'Applications & records', value: statistics.value?.total ?? 0, detail: 'Current admissions and enrollment pipeline', icon: UsersRound },
-    { label: 'Active processing', value: statistics.value?.active ?? 0, detail: 'Records still moving through the office', icon: FilePenLine },
+    { label: 'Active processing', value: statistics.value?.active ?? 0, detail: 'Records still moving through the chain', icon: FilePenLine },
     {
-        label: 'Ready to approve',
-        value: statistics.value?.per_status.verified ?? 0,
-        detail: 'Verified records awaiting placement approval',
-        icon: FileCheck2,
+        label: 'Registrar review',
+        value: statistics.value?.per_status['for-registrar-review'] ?? 0,
+        detail: 'Placement pending after principal approval',
+        icon: ClipboardCheck,
     },
     {
-        label: 'Officially enrolled',
-        value: statistics.value?.officially_enrolled ?? 0,
-        detail: 'Learners with finalized enrollment snapshots',
+        label: 'Final check',
+        value: statistics.value?.per_status['for-final-check'] ?? 0,
+        detail: 'Paid records awaiting official enrollment',
         icon: UserCheck,
     },
 ]);
 
 function transitionFor(record: EnrollmentRecord): Transition | null {
-    if (['pending', 'for-verification', 'requirements-incomplete'].includes(record.status)) {
+    if (record.status === 'pending') {
         return {
-            label: 'Verify requirements',
-            endpoint: 'verify',
-            confirmation:
-                'Check the current requirement status and update this application? Incomplete documents will keep it in the requirements-review queue.',
-            icon: ClipboardCheck,
+            label: 'Forward to principal',
+            endpoint: 'forward-to-principal',
+            confirmation: 'Forward this completed application to the principal for approval?',
+            icon: Send,
         };
     }
 
-    if (['verified', 'for-approval'].includes(record.status)) {
+    if (record.status === 'for-final-check') {
         return {
-            label: 'Approve placement',
-            endpoint: 'approve',
-            confirmation: 'Approve the grade, section, and curriculum placement for this learner?',
-            icon: BadgeCheck,
-        };
-    }
-
-    if (record.status === 'approved') {
-        return {
-            label: 'Officially enrol',
-            endpoint: 'complete',
+            label: 'Final check & enrol',
+            endpoint: 'final-check',
             confirmation:
-                'Complete official enrollment? This materializes the class roster and subject-enrollment snapshots for the selected curriculum.',
+                'Confirm the details and requirements and officially enroll this learner? This materializes the class roster and subject-enrollment snapshots.',
             icon: GraduationCap,
         };
     }
@@ -153,9 +185,14 @@ function transitionFor(record: EnrollmentRecord): Transition | null {
     return null;
 }
 
+const availableSections = computed(() =>
+    placementForm.value.grade_level_id ? sections.value.filter((section) => section.grade_level_id === placementForm.value.grade_level_id) : [],
+);
+
 function statusTone(status: EnrollmentStatus): string {
     if (status === 'officially-enrolled') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (status === 'approved' || status === 'verified') return 'border-primary/15 bg-primary/6 text-primary';
+    if (status === 'for-registrar-review' || status === 'for-final-check') return 'border-primary/15 bg-primary/6 text-primary';
+    if (status === 'for-principal-approval' || status === 'for-payment') return 'border-sky-200 bg-sky-50 text-sky-700';
     if (status === 'requirements-incomplete' || status === 'rejected') return 'border-amber-200 bg-amber-50 text-amber-700';
 
     return 'border-border/80 bg-muted/50 text-muted-foreground';
@@ -219,8 +256,71 @@ async function runNextTransition(record: EnrollmentRecord): Promise<void> {
     await runTransition(record, transition);
 }
 
+function openPlacementDialog(record: EnrollmentRecord): void {
+    placementTarget.value = record;
+    placementForm.value = {
+        grade_level_id: record.grade_level?.id ?? null,
+        section_id: record.section?.id ?? null,
+    };
+}
+
+const placementOpen = computed({
+    get: () => placementTarget.value !== null,
+    set: (open: boolean) => {
+        if (!open) {
+            placementTarget.value = null;
+        }
+    },
+});
+
+async function submitPlacement(): Promise<void> {
+    if (!placementTarget.value) {
+        return;
+    }
+
+    if (!placementForm.value.grade_level_id || !placementForm.value.section_id) {
+        toast.error('Choose a grade level and section before continuing.');
+
+        return;
+    }
+
+    placementSaving.value = true;
+
+    try {
+        await api.post(`/enrollments/${placementTarget.value.id}/registrar-review`, {
+            grade_level_id: placementForm.value.grade_level_id,
+            section_id: placementForm.value.section_id,
+        });
+        toast.success('Placement confirmed and sent to Accounting.');
+        placementTarget.value = null;
+        await load();
+    } catch (error) {
+        toast.error(extractError(error));
+    } finally {
+        placementSaving.value = false;
+    }
+}
+
+async function loadPlacementOptions(): Promise<void> {
+    try {
+        const [gradeLevelsResponse, sectionsResponse] = await Promise.all([
+            api.get<{ data: Paginated<PlacementRow> }>('/grade-levels', {
+                params: { per_page: 100, sort_by: 'sequence', sort_dir: 'asc' },
+            }),
+            api.get<{ data: Paginated<PlacementRow & { grade_level_id: number; max_capacity: number | null }> }>('/sections', {
+                params: { per_page: 200, sort_by: 'name', sort_dir: 'asc' },
+            }),
+        ]);
+
+        gradeLevels.value = gradeLevelsResponse.data.data.items;
+        sections.value = sectionsResponse.data.data.items;
+    } catch (error) {
+        toast.error(extractError(error));
+    }
+}
+
 onMounted(async () => {
-    await load();
+    await Promise.all([load(), loadPlacementOptions()]);
     loading.value = false;
 });
 </script>
@@ -237,7 +337,7 @@ onMounted(async () => {
                 eyebrow="Records office"
                 index="01"
                 title="Enrollment operations"
-                description="Move applications from online intake through requirements, placement, approval, and official enrollment without losing the learner record behind each step."
+                description="Move applications through principal approval, registrar review, payment, and the final check — with each office accountable for its step."
             >
                 <template #actions>
                     <div class="flex items-center gap-2">
@@ -283,9 +383,9 @@ onMounted(async () => {
 
                 <section class="portal-rise mt-12 overflow-hidden rounded-2xl border border-border/60 bg-card" style="animation-delay: 80ms">
                     <header class="border-b border-border/60 p-6">
-                        <p class="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">The public-to-office journey</p>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">The office approval chain</p>
                         <h2 class="mt-3 font-display text-2xl font-medium tracking-[-0.015em] text-foreground">
-                            One enrollment, one accountable path
+                            Principal → Registrar → Accounting → Final check
                         </h2>
                     </header>
                     <div class="grid divide-y divide-border/60 md:grid-cols-4 md:divide-x md:divide-y-0">
@@ -301,10 +401,7 @@ onMounted(async () => {
                     <div
                         class="flex flex-col gap-3 border-t border-border/60 bg-muted/30 px-6 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
                     >
-                        <span
-                            >Families can save and resume their online application; the registrar works from the same enrollment record after
-                            submission.</span
-                        >
+                        <span>Rejections can happen at any stage; every office reviews before the record moves on.</span>
                         <RouterLink to="/enrollment" class="inline-flex shrink-0 items-center gap-1.5 font-medium text-primary hover:underline"
                             >Open public enrollment <ArrowRight class="size-3.5"
                         /></RouterLink>
@@ -319,7 +416,7 @@ onMounted(async () => {
                                 Work the next responsible action
                             </h2>
                         </div>
-                        <RouterLink to="/school/enrollments" class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                        <RouterLink :to="`${portalBase}/enrollments/apply`" class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
                             ><Plus class="size-3.5" /> Start a walk-in record</RouterLink
                         >
                     </div>
@@ -381,14 +478,19 @@ onMounted(async () => {
                                 </span>
                             </div>
                             <div class="flex items-center gap-2 lg:justify-end">
-                                <template v-if="transitionFor(record)">
+                                <template v-if="record.status === 'for-registrar-review'">
+                                    <Button size="sm" @click="openPlacementDialog(record)">
+                                        <ClipboardCheck class="size-3.5" /> Review & place
+                                    </Button>
+                                </template>
+                                <template v-else-if="transitionFor(record)">
                                     <Button size="sm" :disabled="busyId === record.id" @click="runNextTransition(record)">
                                         <LoaderCircle v-if="busyId === record.id" class="size-3.5 animate-spin" />
                                         <component v-else :is="transitionFor(record)?.icon" class="size-3.5" />
                                         {{ transitionFor(record)?.label }}
                                     </Button>
                                 </template>
-                                <RouterLink v-else to="/school/enrollments"
+                                <RouterLink v-else :to="`${portalBase}/enrollments`"
                                     ><Button size="sm" variant="outline">Open record <ArrowRight class="size-3.5" /></Button
                                 ></RouterLink>
                             </div>
@@ -410,5 +512,58 @@ onMounted(async () => {
                 </footer>
             </template>
         </div>
+
+        <Dialog v-model:open="placementOpen">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle class="font-display text-2xl font-medium">Registrar review</DialogTitle>
+                    <DialogDescription>Confirm the grade level and section for {{ placementTarget?.student?.name ?? 'this learner' }}.</DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-5">
+                    <div class="space-y-2">
+                        <Label for="placement-grade">Grade level</Label>
+                        <Select
+                            :model-value="placementForm.grade_level_id ? String(placementForm.grade_level_id) : undefined"
+                            @update:model-value="(value: string) => { placementForm.grade_level_id = Number(value); placementForm.section_id = null; }"
+                        >
+                            <SelectTrigger id="placement-grade"><SelectValue placeholder="Select grade level" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="grade in gradeLevels" :key="grade.id" :value="String(grade.id)">{{ grade.name }}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <Label for="placement-section">Section</Label>
+                        <Select
+                            :model-value="placementForm.section_id ? String(placementForm.section_id) : undefined"
+                            @update:model-value="(value: string) => { placementForm.section_id = Number(value); }"
+                            :disabled="!placementForm.grade_level_id"
+                        >
+                            <SelectTrigger id="placement-section">
+                                <SelectValue :placeholder="placementForm.grade_level_id ? 'Select section' : 'Choose a grade level first'" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="section in availableSections" :key="section.id" :value="String(section.id)">
+                                    {{ section.name }}{{ section.max_capacity ? ` · capacity ${section.max_capacity}` : '' }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p v-if="availableSections.length === 0 && placementForm.grade_level_id" class="text-xs text-muted-foreground">
+                            No active sections for this grade level yet.
+                        </p>
+                    </div>
+                </div>
+
+                <DialogFooter class="pt-2">
+                    <Button type="button" variant="outline" @click="placementTarget = null">Cancel</Button>
+                    <Button type="button" :disabled="placementSaving" @click="submitPlacement">
+                        <LoaderCircle v-if="placementSaving" class="size-3.5 animate-spin" />
+                        Confirm placement & send to Accounting
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </main>
 </template>

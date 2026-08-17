@@ -44,6 +44,12 @@ class EnrollmentStatusChangedListener
         $subscribers->each($notification);
 
         // Notify the student and their linked parents about the outcome.
+        // Drafts may be submitted before any student record exists, so skip
+        // the student circle when there is nothing to notify.
+        if ($event->enrollment->student === null) {
+            return;
+        }
+
         $this->notifications->sendToStudentCircle(
             $event->enrollment->student,
             'enrollment',

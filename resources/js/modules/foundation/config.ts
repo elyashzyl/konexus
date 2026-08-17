@@ -32,6 +32,8 @@ export interface FoundationModule {
     singularLabel: string;
     icon: LucideIcon;
     searchable?: boolean;
+    /** Internal route used by the primary "New" action instead of the create dialog. */
+    createRoute?: string;
 }
 
 const CALENDAR_TYPES: CrudOption[] = [
@@ -91,6 +93,8 @@ const ENROLLMENT_TYPES: CrudOption[] = [
     { value: 'transferee', label: 'Transferee' },
     { value: 're-enrollee', label: 'Re-Enrollee' },
 ];
+
+export { ENROLLMENT_TYPES };
 
 const currency = (value: unknown): string => {
     const amount = Number(value) || 0;
@@ -546,6 +550,7 @@ export const FOUNDATION_MODULES: FoundationModule[] = [
         resource: 'enrollments',
         singularLabel: 'enrollment',
         icon: ClipboardList,
+        createRoute: '/school/enrollments/apply',
         columns: [
             { key: 'enrollment_number', label: 'Enrollment #', sortable: true },
             { key: 'student', label: 'Student' },

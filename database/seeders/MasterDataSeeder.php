@@ -47,7 +47,8 @@ class MasterDataSeeder extends Seeder
             'Pines City Doctors Hospital',
         ],
         'enrollment-status' => [
-            'Draft', 'Pending', 'For Verification', 'Requirements Incomplete', 'Verified',
+            'Draft', 'Pending', 'For Principal Approval', 'For Registrar Review', 'For Payment',
+            'For Final Check', 'For Verification', 'Requirements Incomplete', 'Verified',
             'For Approval', 'Approved', 'Officially Enrolled', 'Rejected', 'Withdrawn',
             'Cancelled', 'Transferred',
         ],

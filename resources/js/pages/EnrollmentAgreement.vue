@@ -13,10 +13,13 @@ interface Application {
     reference_number: string;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialAgreement?: Record<string, unknown> | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { agreement: Record<string, unknown> }] }>();
 
@@ -61,7 +64,7 @@ const submit = async () => {
     };
 
     try {
-        await api.put<{ data: Record<string, unknown> }>(`/public/enrollments/${props.application.id}/details`, { agreement: payload });
+        await api.put<{ data: Record<string, unknown> }>(`${props.apiBase}/${props.application.id}/details`, { agreement: payload });
         toast.success('School agreement saved.');
         emit('submitted', { agreement: payload });
     } catch (error) {

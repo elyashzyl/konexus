@@ -31,5 +31,6 @@ const eyebrow = computed(() => {
         :option-sources="module.optionSources"
         :singular-label="module.singularLabel"
         :searchable="module.searchable"
+        :create-route="module.createRoute"
     />
 </template>

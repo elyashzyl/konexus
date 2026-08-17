@@ -22,10 +22,13 @@ interface SiblingRow {
     grade_level: string;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialSiblings?: Record<string, unknown>[] | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { siblings: Record<string, unknown>[] }] }>();
 
@@ -75,7 +78,7 @@ const submit = async () => {
 
     try {
         const response = await api.put<{ data: { siblings: Record<string, unknown>[] } }>(
-            `/public/enrollments/${props.application.id}/details`,
+            `${props.apiBase}/${props.application.id}/details`,
             { siblings: toPayload() },
         );
         toast.success(rows.value.length ? 'Siblings saved.' : 'No siblings listed.');

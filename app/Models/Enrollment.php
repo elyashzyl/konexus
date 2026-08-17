@@ -71,6 +71,14 @@ class Enrollment extends Model
         'payment_schedule_details',
         'approved_by',
         'approved_at',
+        'principal_approved_by',
+        'principal_approved_at',
+        'registrar_reviewed_by',
+        'registrar_reviewed_at',
+        'payment_recorded_by',
+        'payment_recorded_at',
+        'final_checked_by',
+        'final_checked_at',
         'rejected_by',
         'rejected_at',
         'rejection_reason',
@@ -109,6 +117,10 @@ class Enrollment extends Model
             'date_of_registration' => 'date',
             'initial_payment' => 'decimal:2',
             'approved_at' => 'datetime',
+            'principal_approved_at' => 'datetime',
+            'registrar_reviewed_at' => 'datetime',
+            'payment_recorded_at' => 'datetime',
+            'final_checked_at' => 'datetime',
             'rejected_at' => 'datetime',
             'withdrawn_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -154,6 +166,26 @@ class Enrollment extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function principalApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'principal_approved_by');
+    }
+
+    public function registrarReviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'registrar_reviewed_by');
+    }
+
+    public function paymentRecordedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_recorded_by');
+    }
+
+    public function finalCheckedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'final_checked_by');
     }
 
     public function rejectedBy(): BelongsTo

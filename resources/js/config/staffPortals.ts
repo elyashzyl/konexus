@@ -24,6 +24,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Holidays, examinations and school events.' },
             { key: 'reports', title: 'Reports', description: 'Operational snapshots prepared by the office.' },
+            { key: 'enrollment-approvals', title: 'Enrollment approvals', description: 'Review and approve applications awaiting your sign-off.' },
         ],
     },
     {
@@ -37,6 +38,21 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
                 key: 'enrollment-operations',
                 title: 'Enrollment operations',
                 description: 'Work applications through requirements, approval, and official enrollment.',
+            },
+            {
+                key: 'enrollments',
+                title: 'Enrollment data',
+                description: 'Browse the full enrollment records ledger across academic years.',
+            },
+            {
+                key: 'students',
+                title: 'Students',
+                description: 'Look up learner records, identities and contact details.',
+            },
+            {
+                key: 'notifications',
+                title: 'Notification center',
+                description: 'Review enrollment moves, announcements and system updates.',
             },
             {
                 key: 'online-enrollment',
@@ -53,6 +69,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         description: 'Fees, collections and financial operations.',
         intro: 'Your finance workspace keeps you aligned with billing cycles, payment statuses, and the announcements your office publishes to parents and students.',
         modules: [
+            { key: 'enrollment-payments', title: 'Enrollment payments', description: 'Record payments so the registrar can run the final check.' },
             { key: 'payments', title: 'Payments', description: 'Fees and collection tracking.' },
             { key: 'statuses', title: 'Payment statuses', description: 'Reference statuses used across enrollments.' },
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },

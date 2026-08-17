@@ -19,10 +19,13 @@ interface Application {
 
 type InitialStudent = Record<string, unknown>;
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     application: Application;
     initialStudent?: InitialStudent | null;
-}>();
+    apiBase?: string;
+}>(), {
+    apiBase: '/public/enrollments',
+});
 
 const emit = defineEmits<{ submitted: [data: { student: Record<string, unknown> }] }>();
 
@@ -200,7 +203,7 @@ const submit = async () => {
     processing.value = true;
 
     try {
-        const response = await api.put<{ data: { student: Record<string, unknown> } }>(`/public/enrollments/${props.application.id}/student`, {
+        const response = await api.put<{ data: { student: Record<string, unknown> } }>(`${props.apiBase}/${props.application.id}/student`, {
             ...form.value,
             interests: form.value.interests,
         });
@@ -210,7 +213,7 @@ const submit = async () => {
             const data = new FormData();
             data.append('photo', photoFile.value);
             const photoResponse = await api.post<{ data: { profile_picture_url: string } }>(
-                `/public/enrollments/${props.application.id}/student/photo`,
+                `${props.apiBase}/${props.application.id}/student/photo`,
                 data,
             );
             photoUrl.value = photoResponse.data.data.profile_picture_url;

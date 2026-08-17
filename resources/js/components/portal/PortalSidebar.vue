@@ -15,12 +15,13 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useInitials } from '@/composables/useInitials';
-import { staffPortalByRole, STAFF_PORTALS } from '@/config/staffPortals';
+import { staffPortalByRole } from '@/config/staffPortals';
 import { portalApi } from '@/lib/portalApi';
 import { isAdmin, ROLE_HOME_PATHS } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
 import type { ChildSummary } from '@/types/platform';
 import {
+    BellRing,
     BookOpen,
     CalendarCheck2,
     CalendarDays,
@@ -126,28 +127,6 @@ const overviewHref = computed(() => {
     return role && ROLE_HOME_PATHS[role.name] ? ROLE_HOME_PATHS[role.name] : '/portal/staff/principal';
 });
 
-const adminPortalLinks = computed<NavItem[]>(() => {
-    if (!canPreviewPortals.value) {
-        return [];
-    }
-
-    const links: NavItem[] = [
-        { title: 'Student portal', href: '/portal/student', icon: GraduationCap },
-        { title: 'Parent portal', href: '/portal/parent', icon: UserRound },
-        { title: 'Teacher portal', href: '/portal/teacher', icon: Users },
-    ];
-
-    for (const portal of STAFF_PORTALS) {
-        links.push({
-            title: portal.label,
-            href: ROLE_HOME_PATHS[portal.role] ?? `/portal/staff/${portal.role}`,
-            icon: ClipboardList,
-        });
-    }
-
-    return links;
-});
-
 function isActive(href: string): boolean {
     return route.path === href || route.path.startsWith(`${href}/`);
 }
@@ -209,8 +188,42 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
             {
                 label: 'Admissions & records',
                 items: [
-                    { title: 'Overview', href: overviewHref.value, icon: LayoutGrid },
                     { title: 'Enrollment operations', href: `${overviewHref.value}/enrollment-operations`, icon: ClipboardList },
+                    { title: 'Enrollment data', href: `${overviewHref.value}/enrollments`, icon: GraduationCap },
+                    { title: 'Students', href: `${overviewHref.value}/students`, icon: Users },
+                ],
+            },
+            {
+                label: 'Communications',
+                items: [
+                    { title: 'Notification center', href: `${overviewHref.value}/notifications`, icon: BellRing },
+                    { title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone },
+                ],
+            },
+        ];
+    }
+
+    if (staffRole.value?.role === 'principal') {
+        return [
+            {
+                label: 'Leadership',
+                items: [
+                    { title: 'Enrollment approvals', href: `${overviewHref.value}/enrollment-approvals`, icon: ClipboardList },
+                ],
+            },
+            {
+                label: 'Communications',
+                items: [{ title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone }],
+            },
+        ];
+    }
+
+    if (staffRole.value?.role === 'finance-officer') {
+        return [
+            {
+                label: 'Finance',
+                items: [
+                    { title: 'Enrollment payments', href: `${overviewHref.value}/enrollment-payments`, icon: ClipboardList },
                 ],
             },
             {
@@ -223,10 +236,7 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
     return [
         {
             label: staffRole.value?.eyebrow ?? 'Office',
-            items: [
-                { title: 'Overview', href: overviewHref.value, icon: LayoutGrid },
-                { title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone },
-            ],
+            items: [{ title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone }],
         },
     ];
 });
@@ -291,20 +301,6 @@ const groups = computed(() => {
                 <SidebarGroupLabel>{{ section.label }}</SidebarGroupLabel>
                 <SidebarMenu>
                     <SidebarMenuItem v-for="item in section.items" :key="item.title">
-                        <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.title">
-                            <RouterLink :to="item.href">
-                                <component :is="item.icon" />
-                                <span>{{ item.title }}</span>
-                            </RouterLink>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarGroup>
-
-            <SidebarGroup v-if="adminPortalLinks.length" class="px-2 py-0">
-                <SidebarGroupLabel>All portals</SidebarGroupLabel>
-                <SidebarMenu>
-                    <SidebarMenuItem v-for="item in adminPortalLinks" :key="item.href">
                         <SidebarMenuButton as-child :is-active="isActive(item.href)" :tooltip="item.title">
                             <RouterLink :to="item.href">
                                 <component :is="item.icon" />

@@ -57,6 +57,8 @@ export const portalApi = {
                             specialization: string | null;
                             department: string | null;
                             advisory_section: string | null;
+                            school: string | null;
+                            campus: string | null;
                         };
                         academic_year: string | null;
                         academic_term: string | null;

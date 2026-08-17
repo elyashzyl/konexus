@@ -129,6 +129,12 @@ class StudentService extends CrudService
      */
     protected function applyPeopleCampusScope(Builder $query): void
     {
+        $user = request()->user();
+
+        if ($user !== null && $user->hasRole(\App\Enums\RoleEnum::REGISTRAR->roleName())) {
+            return;
+        }
+
         $campusId = CampusContext::id();
 
         if ($campusId === null) {

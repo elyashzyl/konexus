@@ -128,10 +128,6 @@ async function saveCampus(): Promise<void> {
     }
 }
 
-async function createCampus(): Promise<void> {
-    await saveCampus();
-}
-
 async function openWorkspace(campus: CampusWorkspace): Promise<void> {
     try {
         await workspace.select(campus.id);

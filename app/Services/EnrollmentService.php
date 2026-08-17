@@ -77,6 +77,10 @@ class EnrollmentService extends CrudService
         'gradeLevel',
         'section',
         'requirementItems.requirement',
+        'principalApprovedBy',
+        'registrarReviewedBy',
+        'paymentRecordedBy',
+        'finalCheckedBy',
     ];
 
     protected string $defaultSortBy = 'id';
@@ -186,8 +190,12 @@ class EnrollmentService extends CrudService
      */
     public function update(Model $model, array $data): Model
     {
-        if (! in_array($model->status, [EnrollmentStatus::DRAFT->value, EnrollmentStatus::PENDING->value], true)) {
-            throw ApiException::unprocessable('Enrollment records can only be edited while in Draft or Pending status.');
+        if (! in_array($model->status, [
+            EnrollmentStatus::DRAFT->value,
+            EnrollmentStatus::PENDING->value,
+            EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+        ], true)) {
+            throw ApiException::unprocessable('Enrollment records can only be edited while in Draft, Pending, or awaiting Principal approval.');
         }
 
         $data = $this->hydrateAssignment($data);
@@ -294,7 +302,7 @@ class EnrollmentService extends CrudService
     }
 
     /**
-     * Move an enrollment from Draft to Pending (submit).
+     * Move an enrollment from Draft to For Principal Approval (submit).
      */
     public function submit(Enrollment $enrollment): Enrollment
     {
@@ -303,18 +311,183 @@ class EnrollmentService extends CrudService
         }
 
         return $this->saveTransition($enrollment, [
-            'status' => EnrollmentStatus::PENDING->value,
+            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
             'enrollment_date' => $enrollment->enrollment_date ?: now()->toDateString(),
         ]);
     }
 
     /**
+     * Move an enrollment from Pending to For Principal Approval. Public online
+     * applications are stored as Pending; the registrar forwards a completed
+     * application to the principal for the first approval.
+     */
+    public function forwardToPrincipal(Enrollment $enrollment): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::PENDING->value) {
+            throw ApiException::unprocessable('Only Pending applications can be forwarded to the principal.');
+        }
+
+        return $this->saveTransition($enrollment, [
+            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+            'enrollment_date' => $enrollment->enrollment_date ?: now()->toDateString(),
+        ]);
+    }
+
+    /**
+     * Principal approves an enrollment awaiting their approval; it moves to the
+     * registrar review stage.
+     */
+    public function principalApprove(Enrollment $enrollment): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value) {
+            throw ApiException::unprocessable('Only enrollments awaiting Principal approval can be approved by the Principal.');
+        }
+
+        return $this->saveTransition($enrollment, [
+            'status' => EnrollmentStatus::FOR_REGISTRAR_REVIEW->value,
+            'principal_approved_by' => auth()->id(),
+            'principal_approved_at' => now(),
+        ]);
+    }
+
+    /**
+     * Registrar reviews the details and assigns placement (grade, section,
+     * program). The enrollment then moves to the Accounting stage for payment.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function registrarReview(Enrollment $enrollment, array $data = []): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::FOR_REGISTRAR_REVIEW->value) {
+            throw ApiException::unprocessable('Only enrollments in Registrar Review can be reviewed.');
+        }
+
+        $placement = array_intersect_key($data, array_flip([
+            'academic_term_id',
+            'grade_level_id',
+            'section_id',
+            'curriculum_program_id',
+            'program_cluster',
+            'elective_selections',
+            'department',
+            'strand',
+            'track',
+        ]));
+
+        if ($placement !== []) {
+            $merged = array_merge($enrollment->only([
+                'student_id',
+                'academic_year_id',
+                'campus_id',
+                'grade_level_id',
+                'section_id',
+            ]), $placement);
+
+            $this->assertAssignmentValid($merged, $enrollment);
+
+            $overrideReason = ($data['capacity_override_reason'] ?? $data['capacity_override'] ?? null)
+                ? trim((string) ($data['capacity_override_reason'] ?? $data['capacity_override']))
+                : null;
+
+            unset($placement['capacity_override_reason'], $placement['capacity_override']);
+
+            $enrollment->fill($placement);
+            $enrollment->unsetRelation('section')->unsetRelation('gradeLevel');
+            $this->syncSectionCapacity($enrollment, $overrideReason);
+        }
+
+        return $this->saveTransition($enrollment, [
+            ...$placement,
+            'status' => EnrollmentStatus::FOR_PAYMENT->value,
+            'registrar_reviewed_by' => auth()->id(),
+            'registrar_reviewed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Accounting records the payment for an enrollment awaiting it; the record
+     * moves to the Registrar final-check stage.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function recordPayment(Enrollment $enrollment, array $data = []): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::FOR_PAYMENT->value) {
+            throw ApiException::unprocessable('Only enrollments awaiting payment can have a payment recorded.');
+        }
+
+        $payment = array_intersect_key($data, array_flip([
+            'payment_status',
+            'down_payment',
+            'payment_schedule_date',
+            'payment_schedule_details',
+        ]));
+
+        if (! isset($payment['payment_status']) || blank($payment['payment_status'])) {
+            $payment['payment_status'] = 'paid';
+        }
+
+        return $this->saveTransition($enrollment, [
+            ...$payment,
+            'status' => EnrollmentStatus::FOR_FINAL_CHECK->value,
+            'payment_recorded_by' => auth()->id(),
+            'payment_recorded_at' => now(),
+        ]);
+    }
+
+    /**
+     * Registrar final check: details and requirements are confirmed and the
+     * enrollment becomes officially enrolled.
+     *
+     * @param  string|null  $date  The official enrollment date.
+     * @param  string|null  $capacityOverrideReason  When provided, records the
+     *                                               reason an over-capacity
+     *                                               placement is permitted.
+     */
+    public function finalCheck(Enrollment $enrollment, ?string $date = null, ?string $capacityOverrideReason = null): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::FOR_FINAL_CHECK->value) {
+            throw ApiException::unprocessable('Only enrollments awaiting the final check can be officially enrolled.');
+        }
+
+        if (! $enrollment->allRequirementsSatisfied()) {
+            throw ApiException::unprocessable('All required documents must be verified before the student can be officially enrolled.');
+        }
+
+        $this->syncSectionCapacity($enrollment, $capacityOverrideReason);
+
+        $completed = $this->saveTransition($enrollment, [
+            'status' => EnrollmentStatus::OFFICIALLY_ENROLLED->value,
+            'date_enrolled' => $date ?: now()->toDateString(),
+            'approved_by' => $enrollment->principal_approved_by ?: auth()->id(),
+            'approved_at' => $enrollment->principal_approved_at ?: now(),
+            'final_checked_by' => auth()->id(),
+            'final_checked_at' => now(),
+        ]);
+
+        $this->academicOperations->materializeEnrollment($completed);
+
+        return $completed;
+    }
+
+    /**
      * Verify the submitted requirements; an enrollment moves to Verified when
      * every required item is satisfied, otherwise to Requirements Incomplete.
+     *
+     * Legacy step for records that entered the older workflow (Pending or
+     * For Verification). New chain records pass through the principal,
+     * registrar, payment, and final-check stages instead.
      */
     public function verify(Enrollment $enrollment): Enrollment
     {
         $this->assertNotTerminal($enrollment, 'become verified');
+
+        if (! in_array($enrollment->status, [
+            EnrollmentStatus::PENDING->value,
+            EnrollmentStatus::FOR_VERIFICATION->value,
+        ], true)) {
+            throw ApiException::unprocessable('Only Pending or For Verification enrollments can be verified.');
+        }
 
         $satisfied = $enrollment->allRequirementsSatisfied();
 
@@ -326,7 +499,7 @@ class EnrollmentService extends CrudService
     }
 
     /**
-     * Move a Verified enrollment to Approved.
+     * Move a Verified enrollment to Approved (legacy approval step).
      */
     public function approve(Enrollment $enrollment): Enrollment
     {
@@ -427,6 +600,9 @@ class EnrollmentService extends CrudService
         if (! in_array($enrollment->status, [
             EnrollmentStatus::DRAFT->value,
             EnrollmentStatus::PENDING->value,
+            EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+            EnrollmentStatus::FOR_REGISTRAR_REVIEW->value,
+            EnrollmentStatus::FOR_PAYMENT->value,
             EnrollmentStatus::FOR_VERIFICATION->value,
             EnrollmentStatus::REQUIREMENTS_INCOMPLETE->value,
         ], true)) {
