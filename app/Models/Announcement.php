@@ -21,6 +21,7 @@ class Announcement extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'title',
         'content',
         'category',
@@ -65,6 +66,26 @@ class Announcement extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * The campus this announcement belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this announcement belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

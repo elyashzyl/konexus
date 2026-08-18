@@ -21,6 +21,7 @@ class SchoolCalendarEvent extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'campus_id',
         'title',
         'category',
         'description',
@@ -57,6 +58,26 @@ class SchoolCalendarEvent extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    /**
+     * The campus this event belongs to.
+     *
+     * @return BelongsTo<Campus, $this>
+     */
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    /**
+     * The school profile this event belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
     }
 
     /**

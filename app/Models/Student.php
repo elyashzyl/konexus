@@ -110,6 +110,16 @@ class Student extends Model
     }
 
     /**
+     * The school profile this student belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
+    }
+
+    /**
      * The parents linked to this student.
      *
      * @return BelongsToMany<parent, $this>

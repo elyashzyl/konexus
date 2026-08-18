@@ -69,6 +69,16 @@ class Employee extends Model
     }
 
     /**
+     * The school profile this employee belongs to.
+     *
+     * @return BelongsTo<SchoolProfile, $this>
+     */
+    public function schoolProfile(): BelongsTo
+    {
+        return $this->belongsTo(SchoolProfile::class);
+    }
+
+    /**
      * The department this employee belongs to.
      *
      * @return BelongsTo<Department, $this>
