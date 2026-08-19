@@ -1,3 +1,6 @@
+import type { LucideIcon } from 'lucide-vue-next';
+import { Banknote, BookOpen, ClipboardList, HeartHandshake, HeartPulse, Landmark, Package, UserCog } from 'lucide-vue-next';
+
 export interface StaffPortalSection {
     key: string;
     title: string;
@@ -10,6 +13,7 @@ export interface StaffPortalConfig {
     eyebrow: string;
     description: string;
     intro: string;
+    icon: LucideIcon;
     modules: StaffPortalSection[];
 }
 
@@ -20,6 +24,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Leadership office',
         description: 'Academic leadership and oversight for the whole school.',
         intro: 'Your principal workspace keeps the pulse of the school close at hand — announcements, calendar, and the records that matter for instructional leadership.',
+        icon: Landmark,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Holidays, examinations and school events.' },
@@ -33,6 +38,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Records office',
         description: 'Enrollment records, documents and academic history.',
         intro: 'Your registrar workspace anchors the records office — enrollments, private documents, and the school calendar that structures every term.',
+        icon: ClipboardList,
         modules: [
             {
                 key: 'enrollment-operations',
@@ -68,6 +74,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Finance office',
         description: 'Fees, collections and financial operations.',
         intro: 'Your finance workspace keeps you aligned with billing cycles, payment statuses, and the announcements your office publishes to parents and students.',
+        icon: Banknote,
         modules: [
             { key: 'enrollment-payments', title: 'Enrollment payments', description: 'Record payments so the registrar can run the final check.' },
             { key: 'payments', title: 'Payments', description: 'Fees and collection tracking.' },
@@ -81,6 +88,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Guidance office',
         description: 'Learner support and well-being programs.',
         intro: 'Your guidance workspace centers learner well-being — announcements, calendar events, and the reference lists your office maintains.',
+        icon: HeartHandshake,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Events and examinations to plan around.' },
@@ -93,6 +101,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Clinic',
         description: 'Health services and wellness records.',
         intro: 'Your clinic workspace keeps health matters visible — announcements, calendar events, and the medical reference lists your office relies on.',
+        icon: HeartPulse,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Events and examinations to plan around.' },
@@ -105,6 +114,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Library',
         description: 'Learning resources and the library program.',
         intro: 'Your library workspace connects the learning commons to the school — announcements, calendar, and the subject lists that shape collections.',
+        icon: BookOpen,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Events and examinations to plan around.' },
@@ -117,6 +127,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Human resources',
         description: 'Personnel records and school staffing.',
         intro: 'Your HR workspace keeps personnel matters aligned — announcements, calendar events, and the staff structure your office administers.',
+        icon: UserCog,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Events and examinations to plan around.' },
@@ -129,6 +140,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
         eyebrow: 'Property & supply',
         description: 'Facilities, rooms and school property.',
         intro: 'Your property workspace keeps facilities in view — announcements, calendar events, and the buildings and rooms your office tracks.',
+        icon: Package,
         modules: [
             { key: 'announcements', title: 'Announcements', description: 'School-wide notices and targeted updates.' },
             { key: 'calendar', title: 'School calendar', description: 'Events and examinations to plan around.' },
