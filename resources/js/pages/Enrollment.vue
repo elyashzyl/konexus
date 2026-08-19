@@ -12,6 +12,7 @@ import EnrollmentAgreement from '@/pages/EnrollmentAgreement.vue';
 import EnrollmentChinese from '@/pages/EnrollmentChinese.vue';
 import EnrollmentFamily from '@/pages/EnrollmentFamily.vue';
 import EnrollmentMedical from '@/pages/EnrollmentMedical.vue';
+import EnrollmentOtherDetails from '@/pages/EnrollmentOtherDetails.vue';
 import EnrollmentSignature from '@/pages/EnrollmentSignature.vue';
 import EnrollmentSiblings from '@/pages/EnrollmentSiblings.vue';
 import EnrollmentStudentInfo from '@/pages/EnrollmentStudentInfo.vue';
@@ -93,18 +94,28 @@ interface ResumeData {
     chinese_details: Record<string, unknown> | null;
     agreement: Record<string, unknown> | null;
     signatures: SignatureRecord[] | null;
+    account_settings: Record<string, unknown> | null;
 }
 
 const steps = [
-    { number: 1, label: 'Application' },
-    { number: 2, label: 'Student Information' },
-    { number: 3, label: 'Family Background' },
-    { number: 4, label: 'Siblings' },
-    { number: 5, label: 'School Fees Plan' },
-    { number: 6, label: 'Medical History' },
-    { number: 7, label: 'Chinese Class' },
-    { number: 8, label: 'Agreement' },
-    { number: 9, label: 'Signature' },
+    { number: 1, label: 'Enrollment Details', group: 1 },
+    { number: 2, label: 'Student Details', group: 2 },
+    { number: 3, label: 'Contact Information', group: 3 },
+    { number: 4, label: 'Siblings', group: 4 },
+    { number: 5, label: 'School Fees Plan', group: 4 },
+    { number: 6, label: 'Medical History', group: 2 },
+    { number: 7, label: 'Chinese Class', group: 4 },
+    { number: 8, label: 'Other Details', group: 4 },
+    { number: 9, label: 'Agreements', group: 5 },
+    { number: 10, label: 'Signature', group: 5 },
+];
+
+const sections = [
+    { number: 1, label: 'Enrollment Details' },
+    { number: 2, label: 'Student Details' },
+    { number: 3, label: 'Contact Information' },
+    { number: 4, label: 'Other Details' },
+    { number: 5, label: 'Attachments' },
 ];
 
 const departments = [
@@ -123,6 +134,7 @@ const strands = [
 ];
 
 const statuses = [
+    { value: 'new', label: 'New' },
     { value: 'continuing', label: 'Continuing' },
     { value: 'returning', label: 'Returning' },
     { value: 'transferee', label: 'Transferee' },
@@ -178,7 +190,10 @@ const medicalHistory = ref<Record<string, unknown> | null>(null);
 const chineseDetails = ref<Record<string, unknown> | null>(null);
 const agreement = ref<Record<string, unknown> | null>(null);
 const signatures = ref<SignatureRecord[]>([]);
+const accountSettings = ref<Record<string, unknown> | null>(null);
 const completed = ref(false);
+const paymentMethod = ref<'online' | 'cash' | ''>('');
+const paymentSaving = ref(false);
 const resumeAvailable = ref(false);
 const resuming = ref(false);
 const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -236,6 +251,8 @@ const parentName = computed(() => {
     return '';
 });
 
+const currentGroup = computed(() => steps.find((item) => item.number === step.value)?.group ?? 1);
+
 const heroCopy = computed(() => {
     if (completed.value) {
         return {
@@ -245,15 +262,15 @@ const heroCopy = computed(() => {
         };
     }
 
-    const meta = steps[step.value - 1];
+    const meta = sections.find((item) => item.number === currentGroup.value) ?? sections[0];
 
     return {
-        eyebrow: `Online Enrollment · Part ${meta.number}`,
+        eyebrow: `Online Enrollment · Section ${meta.number} of 5`,
         title: meta.label,
         description:
             step.value === 1
-                ? "Tell us about the program you are applying for. We'll reach out with the next steps for your application."
-                : 'Complete each part to finish your application. You can leave and come back anytime.',
+                ? 'Official enrollment information for this school year. Identifiers and registrar statuses are recorded automatically.'
+                : 'Complete each section to finish your application. You can leave and come back anytime.',
     };
 });
 
@@ -369,6 +386,7 @@ const checkResume = async () => {
         chineseDetails.value = data.chinese_details;
         agreement.value = data.agreement;
         signatures.value = data.signatures ?? [];
+        accountSettings.value = data.account_settings;
 
         const studentSigned = signatures.value.some((signature) => signature.role === 'student');
         const parentSigned = signatures.value.some((signature) => signature.role === 'parent');
@@ -392,7 +410,8 @@ const computeResumeStep = (): number => {
     if (tuitionPlan.value) next = 6;
     if (medicalHistory.value) next = chineseApplicable.value ? 7 : 8;
     if (chineseApplicable.value && chineseDetails.value) next = 8;
-    if (agreement.value?.registration_consent === true) next = 9;
+    if (accountSettings.value) next = 9;
+    if (agreement.value?.registration_consent === true) next = 10;
 
     return next;
 };
@@ -402,7 +421,7 @@ const resume = () => {
 
     if (completed.value) {
         completed.value = false;
-        step.value = 9;
+        step.value = 10;
     } else {
         step.value = computeResumeStep();
     }
@@ -422,6 +441,7 @@ const startNew = () => {
     chineseDetails.value = null;
     agreement.value = null;
     signatures.value = [];
+    accountSettings.value = null;
     completed.value = false;
     resumeAvailable.value = false;
     step.value = 1;
@@ -446,6 +466,11 @@ const goBack = () => {
 
     if (step.value === 8 && !chineseApplicable.value) {
         step.value = 6;
+        return;
+    }
+
+    if (step.value === 9 && !chineseApplicable.value) {
+        step.value = 8;
         return;
     }
 
@@ -534,9 +559,14 @@ const onChineseSubmitted = (data: { chinese_details: Record<string, unknown> }) 
     step.value = 8;
 };
 
+const onOtherDetailsSubmitted = (data: { account_settings: Record<string, unknown> }) => {
+    accountSettings.value = data.account_settings;
+    step.value = 9;
+};
+
 const onAgreementSubmitted = (data: { agreement: Record<string, unknown> }) => {
     agreement.value = data.agreement;
-    step.value = 9;
+    step.value = 10;
 };
 
 const onSignatureSubmitted = () => {
@@ -586,24 +616,22 @@ const formatExpiry = (iso: string): string => {
 
             <!-- Step indicator -->
             <div v-if="!completed" class="portal-rise mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-3 sm:gap-x-3" style="animation-delay: 80ms">
-                <template v-for="(item, index) in steps" :key="item.number">
+                <template v-for="(item, index) in sections" :key="item.number">
                     <div class="flex items-center gap-2 sm:gap-3">
                         <div
                             class="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                            :class="step === item.number ? 'bg-primary/10 text-primary ring-1 ring-primary/20' : 'text-muted-foreground'"
+                            :class="currentGroup === item.number ? 'bg-primary/10 text-primary ring-1 ring-primary/20' : 'text-muted-foreground'"
                         >
                             <span
                                 class="flex size-5 items-center justify-center rounded-full"
-                                :class="step > item.number ? 'bg-primary text-primary-foreground' : step === item.number ? 'bg-primary/15' : 'bg-border/60'"
+                                :class="currentGroup > item.number ? 'bg-primary text-primary-foreground' : currentGroup === item.number ? 'bg-primary/15' : 'bg-border/60'"
                             >
-                                <Check v-if="step > item.number" class="size-3" />
+                                <Check v-if="currentGroup > item.number" class="size-3" />
                                 <template v-else>{{ item.number }}</template>
                             </span>
-                            <span :class="item.number === 7 && !chineseApplicable ? 'hidden sm:inline line-through opacity-50' : 'hidden sm:inline'">
-                                {{ item.label }}
-                            </span>
+                            <span class="hidden sm:inline">{{ item.label }}</span>
                         </div>
-                        <span v-if="index < steps.length - 1" class="h-px w-2 bg-border sm:w-6" />
+                        <span v-if="index < sections.length - 1" class="h-px w-2 bg-border sm:w-6" />
                     </div>
                 </template>
             </div>
@@ -642,7 +670,7 @@ const formatExpiry = (iso: string): string => {
 
                     <form @submit.prevent="submitPart1" class="flex flex-col gap-6">
                         <CardHeader>
-                            <CardTitle>Application details</CardTitle>
+                            <CardTitle>Enrollment information</CardTitle>
                             <CardDescription>
                                 Fill in the necessary information below. Your email and mobile number are properly encoded and kept secure.
                             </CardDescription>
@@ -840,6 +868,40 @@ const formatExpiry = (iso: string): string => {
                                 </div>
                             </div>
 
+                            <div class="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+                                <p class="text-sm font-medium text-foreground">Enrollment status</p>
+                                <div class="grid gap-3 sm:grid-cols-2">
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Date enrolled</span>
+                                        <span class="text-sm">{{ today }}</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Officially enrolled</span>
+                                        <span class="text-sm">Pending registrar approval</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Student withdrawn status</span>
+                                        <span class="text-sm">Not withdrawn</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Sanctioned status</span>
+                                        <span class="text-sm">Clear</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Date withdrawn</span>
+                                        <span class="text-sm">—</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <span class="text-xs text-muted-foreground">Initial payment status</span>
+                                        <span class="text-sm">Unpaid until assessment</span>
+                                    </div>
+                                    <div class="grid gap-1 sm:col-span-2">
+                                        <span class="text-xs text-muted-foreground">Online enrollment reference number</span>
+                                        <span class="font-mono text-sm">{{ application?.reference_number ?? 'Issued after this step' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="flex gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
                                 <ShieldCheck class="mt-0.5 size-5 shrink-0 text-primary" />
                                 <p class="text-sm leading-6 text-muted-foreground">
@@ -894,13 +956,18 @@ const formatExpiry = (iso: string): string => {
                 />
             </div>
 
-            <!-- Part 8 – School agreement -->
+            <!-- Other details -->
             <div v-else-if="step === 8 && application" class="portal-rise mt-8" style="animation-delay: 160ms">
+                <EnrollmentOtherDetails :application="application" :initial-settings="accountSettings" @submitted="onOtherDetailsSubmitted" />
+            </div>
+
+            <!-- Attachments – School agreement -->
+            <div v-else-if="step === 9 && application" class="portal-rise mt-8" style="animation-delay: 160ms">
                 <EnrollmentAgreement :application="application" :initial-agreement="agreement" @submitted="onAgreementSubmitted" />
             </div>
 
-            <!-- Part 9 – Signatures -->
-            <div v-else-if="step === 9 && application" class="portal-rise mt-8" style="animation-delay: 160ms">
+            <!-- Attachments – Signatures -->
+            <div v-else-if="step === 10 && application" class="portal-rise mt-8" style="animation-delay: 160ms">
                 <EnrollmentSignature
                     :application="application"
                     :student-name="studentName"
@@ -938,9 +1005,17 @@ const formatExpiry = (iso: string): string => {
                                 <span class="text-sm font-medium text-foreground">{{ formatExpiry(application.expires_at) }}</span>
                             </div>
                             <p class="pt-2 text-center text-sm leading-6 text-muted-foreground">
-                                We will contact you using the details you provided for the remaining enrollment steps. Your application and
-                                information are automatically deleted after 30 days if not pursued.
+                                Settle the initial tuition online or in cash at the school. Accounting will mark the record paid, then the
+                                principal will assign the learner to a section.
                             </p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <Button variant="outline" :disabled="paymentSaving" @click="choosePayment('online')">
+                                    {{ paymentMethod === 'online' ? 'Online selected' : 'Pay online' }}
+                                </Button>
+                                <Button variant="outline" :disabled="paymentSaving" @click="choosePayment('cash')">
+                                    {{ paymentMethod === 'cash' ? 'Cash selected' : 'Pay in cash' }}
+                                </Button>
+                            </div>
                             <div class="flex gap-3">
                                 <Button variant="outline" class="flex-1" @click="completed = false; step = 9">Review</Button>
                                 <Button class="flex-1" @click="startNew">Start a new application</Button>

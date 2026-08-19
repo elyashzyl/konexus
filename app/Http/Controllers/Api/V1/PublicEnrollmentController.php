@@ -142,6 +142,8 @@ class PublicEnrollmentController extends ApiController
         $yearCode = (string) (AcademicYear::query()->find($data['academic_year_id'])?->code ?? now()->year);
         $padded = str_pad((string) $seq, 6, '0', STR_PAD_LEFT);
 
+        $enrollmentType = $data['status'] === 'new' ? 'new-student' : $data['status'];
+
         $gradeLevelId = GradeLevel::query()
             ->where('school_profile_id', $data['school_profile_id'])
             ->where(function ($query) use ($data): void {
@@ -166,7 +168,11 @@ class PublicEnrollmentController extends ApiController
             'enrollment_number' => 'ENR-'.$yearCode.'-'.$padded,
             'reference_number' => 'KXN-EN-'.$yearCode.'-'.$padded,
             'status' => $status,
-            'enrollment_type' => $data['status'],
+            'enrollment_type' => $enrollmentType,
+            'initial_payment_status' => 'unpaid',
+            'is_withdrawn_student' => false,
+            'is_sanctioned' => false,
+            'is_officially_enrolled' => false,
         ];
 
         if ($markSubmitted) {
@@ -200,6 +206,14 @@ class PublicEnrollmentController extends ApiController
                 'email' => $enrollment->email,
                 'mobile_number' => $enrollment->mobile_number,
                 'application_expires_at' => $enrollment->application_expires_at?->toISOString(),
+                'date_enrolled' => $enrollment->date_enrolled?->toDateString() ?? $enrollment->enrollment_date?->toDateString(),
+                'system_id' => $enrollment->id,
+                'enrollment_number' => $enrollment->enrollment_number,
+                'is_withdrawn_student' => (bool) $enrollment->is_withdrawn_student,
+                'is_sanctioned' => (bool) $enrollment->is_sanctioned,
+                'is_officially_enrolled' => (bool) $enrollment->is_officially_enrolled,
+                'date_withdrawn' => $enrollment->withdrawn_at?->toDateString(),
+                'initial_payment_status' => $enrollment->initial_payment_status,
             ],
             'student' => $enrollment->student ? $this->studentPayload($enrollment->student) : null,
             'family' => $this->familyPayload($enrollment),
@@ -209,12 +223,17 @@ class PublicEnrollmentController extends ApiController
             'chinese_details' => $enrollment->chinese_details,
             'agreement' => [
                 'photo_consent' => $enrollment->photo_consent,
+                'online_photo_sharing' => $enrollment->online_photo_sharing,
                 'registration_consent' => $enrollment->registration_consent,
                 'credentialing_consent' => $enrollment->credentialing_consent,
                 'rules_consent' => $enrollment->rules_consent,
+                'mother_confirmation' => $enrollment->mother_confirmation,
+                'father_confirmation' => $enrollment->father_confirmation,
                 'date_of_registration' => $enrollment->date_of_registration?->toDateString(),
                 'initial_payment' => $enrollment->initial_payment,
+                'initial_payment_status' => $enrollment->initial_payment_status,
             ],
+            'account_settings' => $enrollment->account_settings,
             'signatures' => $enrollment->signatures()
                 ->get(['role', 'signer_name', 'signature_data', 'signed_at'])
                 ->map(fn ($signature) => [
@@ -295,16 +314,33 @@ class PublicEnrollmentController extends ApiController
         $mother = isset($data['mother']) ? $this->upsertParent($student, 'mother', $data['mother']) : null;
         $guardian = isset($data['guardian']) ? $this->upsertGuardian($student, $data['guardian']) : null;
 
+        $studentUpdates = [];
+
         if (array_key_exists('family_monthly_income', $data)) {
-            $student->forceFill(['family_monthly_income' => $data['family_monthly_income']])->save();
+            $studentUpdates['family_monthly_income'] = $data['family_monthly_income'];
         }
 
-        if ($guardian !== null) {
-            $student->forceFill([
-                'emergency_contact_name' => $guardian->full_name,
-                'emergency_contact_relationship' => $guardian->relationship,
-                'emergency_contact_mobile' => $guardian->mobile_number,
-            ])->save();
+        $contactType = $data['emergency_contact_type'] ?? ($guardian !== null ? 'guardian' : 'parent');
+
+        if ($contactType === 'guardian' && $guardian !== null) {
+            $studentUpdates['emergency_contact_name'] = $guardian->full_name;
+            $studentUpdates['emergency_contact_relationship'] = $guardian->relationship;
+            $studentUpdates['emergency_contact_mobile'] = $guardian->mobile_number;
+        } elseif ($contactType === 'parent') {
+            $primary = $father ?? $mother;
+            if ($primary !== null) {
+                $studentUpdates['emergency_contact_name'] = trim(implode(' ', array_filter([$primary->first_name, $primary->last_name])));
+                $studentUpdates['emergency_contact_relationship'] = $father !== null ? 'father' : 'mother';
+                $studentUpdates['emergency_contact_mobile'] = $primary->mobile_number;
+            }
+        } elseif ($contactType === 'others') {
+            $studentUpdates['emergency_contact_name'] = $data['emergency_contact_name'] ?? null;
+            $studentUpdates['emergency_contact_relationship'] = 'others';
+            $studentUpdates['emergency_contact_mobile'] = $data['emergency_contact_mobile'] ?? null;
+        }
+
+        if ($studentUpdates !== []) {
+            $student->forceFill($studentUpdates)->save();
         }
 
         return $this->success([
@@ -323,14 +359,25 @@ class PublicEnrollmentController extends ApiController
 
         $attributes = [];
 
-        foreach (['siblings', 'tuition_plan', 'medical_history', 'chinese_details'] as $key) {
+        foreach (['siblings', 'tuition_plan', 'medical_history', 'chinese_details', 'account_settings'] as $key) {
             if (array_key_exists($key, $data)) {
                 $attributes[$key] = $data[$key];
             }
         }
 
         if (isset($data['agreement'])) {
-            foreach (['photo_consent', 'registration_consent', 'credentialing_consent', 'rules_consent', 'date_of_registration', 'initial_payment'] as $key) {
+            foreach ([
+                'photo_consent',
+                'online_photo_sharing',
+                'registration_consent',
+                'credentialing_consent',
+                'rules_consent',
+                'mother_confirmation',
+                'father_confirmation',
+                'date_of_registration',
+                'initial_payment',
+                'initial_payment_status',
+            ] as $key) {
                 if (array_key_exists($key, $data['agreement'])) {
                     $attributes[$key] = $data['agreement'][$key];
                 }
@@ -341,6 +388,20 @@ class PublicEnrollmentController extends ApiController
             $enrollment->forceFill($attributes)->save();
         }
 
+        if (isset($data['medical_history']) && $enrollment->student) {
+            $medical = $data['medical_history'];
+            $enrollment->student->forceFill([
+                'food_allergies' => $medical['food_intolerances'] ?? $medical['allergies'] ?? $enrollment->student->food_allergies,
+                'medical_conditions' => collect([
+                    $medical['digestive_problems'] ?? null,
+                    $medical['kidney_problems'] ?? null,
+                    $medical['other_conditions'] ?? null,
+                ])->filter()->implode("\n"),
+                'preferred_hospital' => $medical['preferred_hospital'] ?? $medical['emergency_hospital'] ?? $enrollment->student->preferred_hospital,
+                'emergency_medical_notes' => $medical['emergency_medical_information'] ?? $enrollment->student->emergency_medical_notes,
+            ])->save();
+        }
+
         return $this->success([
             'id' => $enrollment->id,
             'details' => [
@@ -348,13 +409,18 @@ class PublicEnrollmentController extends ApiController
                 'tuition_plan' => $enrollment->tuition_plan,
                 'medical_history' => $enrollment->medical_history,
                 'chinese_details' => $enrollment->chinese_details,
+                'account_settings' => $enrollment->account_settings,
                 'agreement' => [
                     'photo_consent' => $enrollment->photo_consent,
+                    'online_photo_sharing' => $enrollment->online_photo_sharing,
                     'registration_consent' => $enrollment->registration_consent,
                     'credentialing_consent' => $enrollment->credentialing_consent,
                     'rules_consent' => $enrollment->rules_consent,
+                    'mother_confirmation' => $enrollment->mother_confirmation,
+                    'father_confirmation' => $enrollment->father_confirmation,
                     'date_of_registration' => $enrollment->date_of_registration?->toDateString(),
                     'initial_payment' => $enrollment->initial_payment,
+                    'initial_payment_status' => $enrollment->initial_payment_status,
                 ],
             ],
         ], 'Application details saved.', 200);
@@ -381,11 +447,47 @@ class PublicEnrollmentController extends ApiController
             ]
         );
 
+        $roles = $enrollment->signatures()->pluck('role');
+
+        if ($roles->contains('student') && $roles->contains('parent') && $enrollment->status === EnrollmentStatus::PENDING->value) {
+            $enrollment->forceFill([
+                'status' => EnrollmentStatus::FOR_PAYMENT->value,
+                'initial_payment_status' => $enrollment->initial_payment_status ?: 'unpaid',
+            ])->save();
+        }
+
         return $this->success([
             'role' => $signature->role,
             'signer_name' => $signature->signer_name,
             'signed_at' => $signature->signed_at?->toIso8601String(),
+            'status' => $enrollment->fresh()?->status,
         ], 'Signature captured.', 200);
+    }
+
+    /**
+     * Family chooses how they will settle the initial tuition.
+     */
+    public function preferPayment(Enrollment $enrollment, Request $request): JsonResponse
+    {
+        $request->validate([
+            'payment_method' => ['required', Rule::in(['online', 'cash'])],
+        ]);
+
+        if (! in_array($enrollment->status, [EnrollmentStatus::PENDING->value, EnrollmentStatus::FOR_PAYMENT->value], true)) {
+            return $this->error('Payment preference can only be set on applications awaiting payment.', null, 422);
+        }
+
+        $enrollment->forceFill([
+            'status' => EnrollmentStatus::FOR_PAYMENT->value,
+            'payment_method' => $request->string('payment_method'),
+            'initial_payment_status' => $enrollment->initial_payment_status ?: 'unpaid',
+        ])->save();
+
+        return $this->success([
+            'id' => $enrollment->id,
+            'status' => $enrollment->status,
+            'payment_method' => $enrollment->payment_method,
+        ], 'Payment preference saved.');
     }
 
     /**
@@ -484,7 +586,9 @@ class PublicEnrollmentController extends ApiController
             'birth_date' => $student->birth_date?->toDateString(),
             'age' => $student->age,
             'gender' => $student->gender,
+            'nationality' => $student->nationality,
             'citizenship' => $student->citizenship,
+            'student_number' => $student->student_number,
             'religion' => $student->religion,
             'mobile_number' => $student->mobile_number,
             'email' => $student->email,
@@ -512,14 +616,32 @@ class PublicEnrollmentController extends ApiController
         $student = $enrollment->student;
 
         if ($student === null) {
-            return ['father' => null, 'mother' => null, 'guardian' => null, 'family_monthly_income' => null];
+            return [
+                'father' => null,
+                'mother' => null,
+                'guardian' => null,
+                'family_monthly_income' => null,
+                'emergency_contact_type' => null,
+                'emergency_contact_name' => null,
+                'emergency_contact_mobile' => null,
+            ];
         }
+
+        $relationship = $student->emergency_contact_relationship;
+        $contactType = match ($relationship) {
+            'others' => 'others',
+            'father', 'mother' => 'parent',
+            default => $relationship ? 'guardian' : null,
+        };
 
         return [
             'father' => $this->parentPayload($student->parents()->where('relationship', 'father')->first()),
             'mother' => $this->parentPayload($student->parents()->where('relationship', 'mother')->first()),
             'guardian' => $this->guardianPayload($student->guardians()->first()),
             'family_monthly_income' => $student->family_monthly_income,
+            'emergency_contact_type' => $contactType,
+            'emergency_contact_name' => $student->emergency_contact_name,
+            'emergency_contact_mobile' => $student->emergency_contact_mobile,
         ];
     }
 

@@ -54,6 +54,7 @@ class EnrollmentResource extends JsonResource
                 'id' => $this->gradeLevel->id,
                 'name' => $this->gradeLevel->name,
                 'code' => $this->gradeLevel->code,
+                'education_level' => $this->gradeLevel->education_level,
             ] : null),
             'section' => $this->whenLoaded('section', fn () => $this->section ? [
                 'id' => $this->section->id,
@@ -73,6 +74,10 @@ class EnrollmentResource extends JsonResource
             'transfer_remarks' => $this->transfer_remarks,
 
             'payment_status' => $this->payment_status,
+            'payment_method' => $this->payment_method,
+            'initial_payment_status' => $this->initial_payment_status,
+            'department' => $this->department,
+            'incoming_level' => $this->incoming_level,
             'down_payment' => $this->down_payment,
             'payment_schedule_date' => $this->payment_schedule_date?->toDateString(),
             'payment_schedule_details' => $this->payment_schedule_details,

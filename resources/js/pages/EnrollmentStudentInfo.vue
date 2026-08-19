@@ -51,6 +51,7 @@ const form = ref({
     nickname: '',
     birth_date: '',
     gender: '',
+    nationality: '',
     citizenship: '',
     religion: '',
     mobile_number: '',
@@ -132,6 +133,7 @@ onMounted(() => {
         nickname: pick('nickname', '') ?? '',
         birth_date: pick('birth_date', '') ?? '',
         gender: pick('gender', '') ?? '',
+        nationality: pick('nationality', '') ?? '',
         citizenship: pick('citizenship', '') ?? '',
         religion: pick('religion', '') ?? '',
         mobile_number: pick('mobile_number', '') ?? '',
@@ -243,8 +245,8 @@ const submit = async () => {
             <CardHeader>
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <CardTitle>Student Information</CardTitle>
-                        <CardDescription>Tell us about the student applying for enrollment.</CardDescription>
+                        <CardTitle>Student details</CardTitle>
+                        <CardDescription>Personal profile, demographics, and official identifiers.</CardDescription>
                     </div>
                     <span class="shrink-0 rounded-full bg-primary/10 px-3 py-1 font-mono text-[11px] font-medium text-primary ring-1 ring-primary/15">
                         {{ application.reference_number }}
@@ -255,16 +257,28 @@ const submit = async () => {
             <CardContent class="grid gap-6">
                 <!-- Student identifiers -->
                 <div class="grid gap-3">
-                    <p class="text-sm font-medium text-muted-foreground">Student identifiers</p>
+                    <p class="text-sm font-medium text-muted-foreground">Student identification</p>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         <div class="grid gap-2">
-                            <Label for="school_student_id">BPHS ID Number</Label>
-                            <Input id="school_student_id" type="text" v-model="form.school_student_id" placeholder="School ID (if assigned)" class="h-9 px-2.5 py-1.5" />
+                            <Label>System ID</Label>
+                            <div class="flex h-9 items-center rounded-md border border-border/60 bg-muted/40 px-2.5 font-mono text-sm text-muted-foreground">
+                                {{ application.id }}
+                            </div>
                         </div>
                         <div class="grid gap-2">
-                            <Label for="lrn">LRN</Label>
-                            <Input id="lrn" type="text" v-model="form.lrn" placeholder="Learner Reference Number (12 digits)" class="h-9 px-2.5 py-1.5" maxlength="12" />
+                            <Label>Student number</Label>
+                            <div class="flex h-9 items-center rounded-md border border-border/60 bg-muted/40 px-2.5 font-mono text-sm text-muted-foreground">
+                                {{ String(initialStudent?.student_number ?? 'Assigned on save') }}
+                            </div>
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="school_student_id">School student ID</Label>
+                            <Input id="school_student_id" type="text" v-model="form.school_student_id" placeholder="If already assigned" class="h-9 px-2.5 py-1.5" />
+                        </div>
+                        <div class="grid gap-2 sm:col-span-2">
+                            <Label for="lrn">Learner Reference Number (LRN)</Label>
+                            <Input id="lrn" type="text" v-model="form.lrn" placeholder="12 digits" class="h-9 px-2.5 py-1.5" maxlength="12" />
                             <InputError :message="errors.lrn" />
                         </div>
                     </div>
@@ -272,7 +286,7 @@ const submit = async () => {
 
                 <!-- Name -->
                 <div class="grid gap-3">
-                    <p class="text-sm font-medium text-muted-foreground">Name</p>
+                    <p class="text-sm font-medium text-muted-foreground">Personal information</p>
 
                     <div class="grid grid-cols-2 gap-3">
                         <div class="grid gap-2">
@@ -332,14 +346,18 @@ const submit = async () => {
                 </div>
 
                 <!-- Contact -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="grid gap-2">
-                        <Label for="citizenship">Citizenship</Label>
-                        <Input id="citizenship" type="text" v-model="form.citizenship" placeholder="e.g. Filipino" class="h-9 px-2.5 py-1.5" />
-                    </div>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <div class="grid gap-2">
                         <Label for="religion">Religion</Label>
                         <Input id="religion" type="text" v-model="form.religion" class="h-9 px-2.5 py-1.5" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="nationality">Nationality</Label>
+                        <Input id="nationality" type="text" v-model="form.nationality" placeholder="e.g. Filipino" class="h-9 px-2.5 py-1.5" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="citizenship">Citizenship</Label>
+                        <Input id="citizenship" type="text" v-model="form.citizenship" placeholder="e.g. Filipino" class="h-9 px-2.5 py-1.5" />
                     </div>
                 </div>
 

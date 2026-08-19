@@ -216,15 +216,24 @@ class EnrollmentController extends CrudController
     /**
      * Principal approves the enrollment (For Principal Approval -> Registrar Review).
      */
-    public function principalApprove(int $id): JsonResponse
+    public function principalApprove(Request $request, int $id): JsonResponse
     {
         $enrollment = $this->service->find($id);
 
         $this->authorize('principalApprove', $enrollment);
 
+        $data = $request->only([
+            'grade_level_id',
+            'section_id',
+            'academic_term_id',
+            'curriculum_program_id',
+            'program_cluster',
+            'capacity_override_reason',
+        ]);
+
         return $this->success(
-            new EnrollmentResource($this->service->principalApprove($enrollment)),
-            'Enrollment approved by the principal.'
+            new EnrollmentResource($this->service->principalApprove($enrollment, $data)),
+            'Learner assigned to a section and officially enrolled.'
         );
     }
 
@@ -268,6 +277,7 @@ class EnrollmentController extends CrudController
 
         $data = $request->only([
             'payment_status',
+            'payment_method',
             'down_payment',
             'payment_schedule_date',
             'payment_schedule_details',

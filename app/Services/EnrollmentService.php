@@ -302,7 +302,7 @@ class EnrollmentService extends CrudService
     }
 
     /**
-     * Move an enrollment from Draft to For Principal Approval (submit).
+     * Submit a walk-in draft into the tuition payment queue.
      */
     public function submit(Enrollment $enrollment): Enrollment
     {
@@ -310,44 +310,99 @@ class EnrollmentService extends CrudService
             throw ApiException::unprocessable('Only Draft enrollments can be submitted.');
         }
 
-        return $this->saveTransition($enrollment, [
-            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
-            'enrollment_date' => $enrollment->enrollment_date ?: now()->toDateString(),
-        ]);
+        return $this->releaseToPayment($enrollment);
     }
 
     /**
-     * Move an enrollment from Pending to For Principal Approval. Public online
-     * applications are stored as Pending; the registrar forwards a completed
-     * application to the principal for the first approval.
+     * Release a completed application to Accounting for online or cash payment.
      */
     public function forwardToPrincipal(Enrollment $enrollment): Enrollment
     {
-        if ($enrollment->status !== EnrollmentStatus::PENDING->value) {
-            throw ApiException::unprocessable('Only Pending applications can be forwarded to the principal.');
-        }
-
-        return $this->saveTransition($enrollment, [
-            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
-            'enrollment_date' => $enrollment->enrollment_date ?: now()->toDateString(),
-        ]);
+        return $this->releaseToPayment($enrollment);
     }
 
     /**
-     * Principal approves an enrollment awaiting their approval; it moves to the
-     * registrar review stage.
+     * Move a pending or draft application to the payment queue.
      */
-    public function principalApprove(Enrollment $enrollment): Enrollment
+    public function releaseToPayment(Enrollment $enrollment, ?string $paymentMethod = null): Enrollment
     {
-        if ($enrollment->status !== EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value) {
-            throw ApiException::unprocessable('Only enrollments awaiting Principal approval can be approved by the Principal.');
+        if (! in_array($enrollment->status, [
+            EnrollmentStatus::PENDING->value,
+            EnrollmentStatus::DRAFT->value,
+        ], true)) {
+            throw ApiException::unprocessable('Only completed applications can be released for payment.');
         }
 
-        return $this->saveTransition($enrollment, [
-            'status' => EnrollmentStatus::FOR_REGISTRAR_REVIEW->value,
+        $attributes = [
+            'status' => EnrollmentStatus::FOR_PAYMENT->value,
+            'enrollment_date' => $enrollment->enrollment_date ?: now()->toDateString(),
+            'initial_payment_status' => $enrollment->initial_payment_status ?: 'unpaid',
+        ];
+
+        if ($paymentMethod !== null) {
+            $attributes['payment_method'] = $paymentMethod;
+        }
+
+        return $this->saveTransition($enrollment, $attributes);
+    }
+
+    /**
+     * Principal assigns the learner to a section after payment is confirmed.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function principalApprove(Enrollment $enrollment, array $data = []): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value) {
+            throw ApiException::unprocessable('Only paid enrollments awaiting the Principal can be assigned to a section.');
+        }
+
+        $placement = array_intersect_key($data, array_flip([
+            'grade_level_id',
+            'section_id',
+            'academic_term_id',
+            'curriculum_program_id',
+            'program_cluster',
+        ]));
+
+        if ($placement !== []) {
+            $merged = array_merge($enrollment->only([
+                'student_id',
+                'academic_year_id',
+                'campus_id',
+                'grade_level_id',
+                'section_id',
+            ]), $placement);
+
+            $this->assertAssignmentValid($merged, $enrollment);
+
+            $overrideReason = ($data['capacity_override_reason'] ?? null)
+                ? trim((string) $data['capacity_override_reason'])
+                : null;
+
+            $enrollment->fill($placement);
+            $enrollment->unsetRelation('section')->unsetRelation('gradeLevel');
+            $this->syncSectionCapacity($enrollment, $overrideReason);
+        }
+
+        if (! $enrollment->section_id && empty($placement['section_id'])) {
+            throw ApiException::unprocessable('Assign a section before officially enrolling the learner.');
+        }
+
+        $completed = $this->saveTransition($enrollment, [
+            ...$placement,
+            'status' => EnrollmentStatus::OFFICIALLY_ENROLLED->value,
+            'is_officially_enrolled' => true,
+            'date_enrolled' => $enrollment->date_enrolled ?: now()->toDateString(),
             'principal_approved_by' => auth()->id(),
             'principal_approved_at' => now(),
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
+
+        $this->academicOperations->materializeEnrollment($completed);
+
+        return $completed;
     }
 
     /**
@@ -418,6 +473,7 @@ class EnrollmentService extends CrudService
 
         $payment = array_intersect_key($data, array_flip([
             'payment_status',
+            'payment_method',
             'down_payment',
             'payment_schedule_date',
             'payment_schedule_details',
@@ -427,9 +483,14 @@ class EnrollmentService extends CrudService
             $payment['payment_status'] = 'paid';
         }
 
+        if (! isset($payment['payment_method']) || blank($payment['payment_method'])) {
+            $payment['payment_method'] = $enrollment->payment_method ?: 'cash';
+        }
+
         return $this->saveTransition($enrollment, [
             ...$payment,
-            'status' => EnrollmentStatus::FOR_FINAL_CHECK->value,
+            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+            'initial_payment_status' => $payment['payment_status'] === 'unpaid' ? 'unpaid' : 'paid',
             'payment_recorded_by' => auth()->id(),
             'payment_recorded_at' => now(),
         ]);
@@ -921,6 +982,63 @@ class EnrollmentService extends CrudService
             $enrollment->requirementItems()->create([
                 'enrollment_requirement_id' => $requirement->id,
                 'status' => RequirementItemStatus::NOT_SUBMITTED->value,
+            ]);
+        }
+
+        foreach ($current as $item) {
+            if ($applicable->contains('id', $item->enrollment_requirement_id)) {
+                continue;
+            }
+
+            $item->documents()->delete();
+            $item->delete();
+        }
+    }
+
+    /**
+     * Persist a workflow transition and dispatch the status-change event.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function saveTransition(Enrollment $enrollment, array $attributes): Enrollment
+    {
+        $oldStatus = $enrollment->status;
+
+        $model = $this->repo->update($enrollment, $attributes);
+
+        if ($model->status !== $oldStatus) {
+            event(new EnrollmentStatusChanged($model, $oldStatus, auth()->user()));
+        }
+
+        return $model->load($this->with);
+    }
+
+    /**
+     * Revert an officially enrolled record back to Approved.
+     */
+    public function revert(Enrollment $enrollment): Enrollment
+    {
+        if ($enrollment->status !== EnrollmentStatus::OFFICIALLY_ENROLLED->value) {
+            throw ApiException::unprocessable('Only officially enrolled records can be reverted.');
+        }
+
+        return $this->saveTransition($enrollment, [
+            'status' => EnrollmentStatus::APPROVED->value,
+            'date_enrolled' => null,
+        ]);
+    }
+
+    /**
+     * @throws ApiException
+     */
+    protected function assertNotTerminal(Enrollment $enrollment, string $verb = 'continue'): void
+    {
+        if (in_array($enrollment->status, EnrollmentStatus::terminalStatuses(), true)) {
+            throw ApiException::unprocessable("This enrollment is already in a terminal status and cannot {$verb}.");
+        }
+    }
+}
+uirementItemStatus::NOT_SUBMITTED->value,
             ]);
         }
 

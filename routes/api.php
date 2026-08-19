@@ -189,6 +189,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
     Route::post('public/enrollments/{enrollment}/signature', [PublicEnrollmentController::class, 'storeSignature'])
         ->middleware('throttle:enrollment.signature')
         ->name('public.enrollments.signature');
+    Route::post('public/enrollments/{enrollment}/payment-preference', [PublicEnrollmentController::class, 'preferPayment'])
+        ->middleware('throttle:enrollment.details')
+        ->name('public.enrollments.payment-preference');
 
     // ─────────────────────────────────────────
     // Phase 2 core modules

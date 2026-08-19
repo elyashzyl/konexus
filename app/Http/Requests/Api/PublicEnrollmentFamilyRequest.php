@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the Part 3 online enrollment family background payload.
@@ -29,6 +30,9 @@ class PublicEnrollmentFamilyRequest extends FormRequest
 
         return [
             'family_monthly_income' => ['nullable', 'string', 'max:50'],
+            'emergency_contact_type' => ['nullable', 'string', Rule::in(['parent', 'guardian', 'others'])],
+            'emergency_contact_name' => ['nullable', 'string', 'max:255'],
+            'emergency_contact_mobile' => ['nullable', 'string', 'max:30'],
 
             'father' => ['nullable', 'array'],
             'father.not_applicable' => ['nullable', 'boolean'],

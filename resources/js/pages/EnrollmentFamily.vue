@@ -38,6 +38,9 @@ interface GuardianForm {
 
 interface FamilyForm {
     family_monthly_income: string;
+    emergency_contact_type: string;
+    emergency_contact_name: string;
+    emergency_contact_mobile: string;
     father: ParentForm;
     mother: ParentForm;
     guardian: GuardianForm;
@@ -48,6 +51,9 @@ interface InitialFamily {
     mother: Record<string, unknown> | null;
     guardian: Record<string, unknown> | null;
     family_monthly_income: string | null;
+    emergency_contact_type?: string | null;
+    emergency_contact_name?: string | null;
+    emergency_contact_mobile?: string | null;
 }
 
 const props = withDefaults(defineProps<{
@@ -62,6 +68,9 @@ const emit = defineEmits<{ submitted: [data: { family: Record<string, unknown> }
 
 const form = ref<FamilyForm>({
     family_monthly_income: '',
+    emergency_contact_type: 'parent',
+    emergency_contact_name: '',
+    emergency_contact_mobile: '',
     father: {
         not_applicable: false,
         last_name: '',
@@ -122,6 +131,9 @@ onMounted(() => {
     };
 
     form.value.family_monthly_income = family.family_monthly_income ?? '';
+    form.value.emergency_contact_type = String(family.emergency_contact_type ?? 'parent');
+    form.value.emergency_contact_name = String(family.emergency_contact_name ?? '');
+    form.value.emergency_contact_mobile = String(family.emergency_contact_mobile ?? '');
     form.value.father = parentToForm(family.father);
     form.value.mother = parentToForm(family.mother);
 
@@ -186,6 +198,9 @@ const submit = async () => {
 
     const payload: Record<string, unknown> = {
         family_monthly_income: form.value.family_monthly_income.trim() || null,
+        emergency_contact_type: form.value.emergency_contact_type,
+        emergency_contact_name: form.value.emergency_contact_name.trim() || null,
+        emergency_contact_mobile: form.value.emergency_contact_mobile.trim() || null,
     };
 
     const father = buildParentPayload(form.value.father);
@@ -230,8 +245,8 @@ const submit = async () => {
             <CardHeader>
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <CardTitle>Family Background</CardTitle>
-                        <CardDescription>Provide the student's family and emergency contact details.</CardDescription>
+                        <CardTitle>Contact information</CardTitle>
+                        <CardDescription>Emergency contact, parents, and guardian details.</CardDescription>
                     </div>
                     <span class="shrink-0 rounded-full bg-primary/10 px-3 py-1 font-mono text-[11px] font-medium text-primary ring-1 ring-primary/15">
                         {{ application.reference_number }}
@@ -240,10 +255,39 @@ const submit = async () => {
             </CardHeader>
 
             <CardContent class="grid gap-6">
+                <section class="grid gap-3 rounded-xl border border-border/60 p-4">
+                    <p class="text-sm font-medium text-muted-foreground">Emergency contact</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label
+                            v-for="option in [
+                                { value: 'parent', label: 'Parent' },
+                                { value: 'guardian', label: 'Guardian' },
+                                { value: 'others', label: 'Others' },
+                            ]"
+                            :key="option.value"
+                            class="flex cursor-pointer items-center gap-2 rounded-lg border border-border/60 px-3 py-2.5 text-sm"
+                            :class="form.emergency_contact_type === option.value ? 'border-primary/40 bg-primary/5' : ''"
+                        >
+                            <input v-model="form.emergency_contact_type" type="radio" name="emergency_contact_type" :value="option.value" class="size-4 accent-[hsl(26_57%_40%)]" />
+                            {{ option.label }}
+                        </label>
+                    </div>
+                    <div v-if="form.emergency_contact_type === 'others'" class="grid grid-cols-2 gap-3">
+                        <div class="grid gap-2">
+                            <Label for="emergency-name">Emergency contact person</Label>
+                            <Input id="emergency-name" v-model="form.emergency_contact_name" class="h-9 px-2.5 py-1.5" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="emergency-mobile">Primary contact number</Label>
+                            <Input id="emergency-mobile" v-model="form.emergency_contact_mobile" type="tel" class="h-9 px-2.5 py-1.5" />
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Father -->
                 <section class="grid gap-3 rounded-xl border border-border/60 p-4">
                     <div class="flex items-center justify-between gap-4">
-                        <p class="text-sm font-medium text-muted-foreground">Father</p>
+                        <p class="text-sm font-medium text-muted-foreground">Father's information</p>
                         <label class="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
                             <input v-model="form.father.not_applicable" type="checkbox" class="size-4 rounded border-border text-primary" />
                             Check if not applicable
@@ -351,8 +395,8 @@ const submit = async () => {
                 <!-- Guardian -->
                 <section class="grid gap-3 rounded-xl border border-border/60 p-4">
                     <div>
-                        <p class="text-sm font-medium text-muted-foreground">Guardian</p>
-                        <p class="text-xs leading-5 text-muted-foreground">Emergency Contact Information / Primary Contact</p>
+                        <p class="text-sm font-medium text-muted-foreground">Guardian information</p>
+                        <p class="text-xs leading-5 text-muted-foreground">Guardian's name and primary contact number</p>
                     </div>
 
                     <div class="grid gap-3">
