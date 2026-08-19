@@ -1,3 +1,5 @@
+import { STAFF_PORTALS } from '@/config/staffPortals';
+import { ROLE_HOME_PATHS } from '@/lib/roles';
 import type { LucideIcon } from 'lucide-vue-next';
 import {
     Activity,
@@ -16,8 +18,6 @@ import {
     UserCog,
     Users,
 } from 'lucide-vue-next';
-import { STAFF_PORTALS } from '@/config/staffPortals';
-import { ROLE_HOME_PATHS } from '@/lib/roles';
 
 /**
  * The Part 8 platform navigation model.
@@ -25,6 +25,8 @@ import { ROLE_HOME_PATHS } from '@/lib/roles';
  * Every entry declares the roles allowed to see it, so the sidebar can render
  * a permission-aware navigation without hardcoding role checks in the layout.
  */
+export type PlatformNavGroup = 'portals' | 'workspace' | 'administration' | 'platform';
+
 export interface PlatformNavEntry {
     key: string;
     title: string;
@@ -32,6 +34,8 @@ export interface PlatformNavEntry {
     icon: LucideIcon;
     description: string;
     roles?: string[];
+    group?: PlatformNavGroup;
+    exact?: boolean;
 }
 
 export const PLATFORM_NAV: PlatformNavEntry[] = [
@@ -42,6 +46,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: GraduationCap,
         description: 'Your profile, grades and schedule.',
         roles: ['student', 'super-administrator', 'school-administrator'],
+        group: 'portals',
     },
     {
         key: 'parent-portal',
@@ -50,6 +55,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: HeartHandshake,
         description: 'Follow your children.',
         roles: ['parent', 'super-administrator', 'school-administrator'],
+        group: 'portals',
     },
     {
         key: 'teacher-portal',
@@ -58,16 +64,25 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Users,
         description: 'Your classes and schedule.',
         roles: ['teacher', 'adviser', 'super-administrator', 'school-administrator'],
+        group: 'portals',
     },
     ...STAFF_PORTALS.map((portal) => ({
         key: `staff-portal-${portal.role}`,
         title: portal.label,
         path: ROLE_HOME_PATHS[portal.role] ?? `/portal/staff/${portal.role}`,
-        icon: Users,
+        icon: portal.icon,
         description: portal.description,
         roles: [portal.role, 'super-administrator', 'school-administrator'],
+        group: 'portals' as const,
     })),
-    { key: 'notifications', title: 'Notification Center', path: '/notifications', icon: Bell, description: 'Everything happening around you.' },
+    {
+        key: 'notifications',
+        title: 'Notification Center',
+        path: '/notifications',
+        icon: Bell,
+        description: 'Everything happening around you.',
+        group: 'workspace',
+    },
     {
         key: 'admin-dashboard',
         title: 'Admin Dashboard',
@@ -75,6 +90,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: BarChart3,
         description: 'Operational analytics.',
         roles: ['super-administrator', 'school-administrator'],
+        group: 'administration',
     },
     {
         key: 'activity-logs',
@@ -83,6 +99,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Activity,
         description: 'The full audit trail.',
         roles: ['super-administrator', 'school-administrator'],
+        group: 'administration',
     },
     {
         key: 'users',
@@ -91,6 +108,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: UserCog,
         description: 'Accounts, roles and access.',
         roles: ['super-administrator', 'school-administrator'],
+        group: 'administration',
     },
     {
         key: 'settings',
@@ -99,6 +117,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Settings,
         description: 'Grouped system configuration.',
         roles: ['super-administrator', 'school-administrator'],
+        group: 'administration',
     },
     {
         key: 'reports',
@@ -107,6 +126,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Megaphone,
         description: 'CSV and PDF exports.',
         roles: ['super-administrator', 'school-administrator'],
+        group: 'administration',
     },
     {
         key: 'maintenance',
@@ -115,6 +135,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: HardDrive,
         description: 'System health and backups.',
         roles: ['super-administrator'],
+        group: 'administration',
     },
     {
         key: 'subscription-overview',
@@ -123,6 +144,8 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: ChartNoAxesCombined,
         description: 'Revenue, tenants and lifecycle health.',
         roles: ['super-administrator', 'platform-administrator'],
+        group: 'platform',
+        exact: true,
     },
     {
         key: 'subscription-tenants',
@@ -131,6 +154,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Building2,
         description: 'Organizations provisioned on the platform.',
         roles: ['super-administrator', 'platform-administrator'],
+        group: 'platform',
     },
     {
         key: 'subscription-plans',
@@ -139,6 +163,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Boxes,
         description: 'Tiers, pricing and feature sets.',
         roles: ['super-administrator', 'platform-administrator'],
+        group: 'platform',
     },
     {
         key: 'subscriptions',
@@ -147,6 +172,7 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: RadioTower,
         description: 'Provision and manage subscriptions.',
         roles: ['super-administrator', 'platform-administrator'],
+        group: 'platform',
     },
     {
         key: 'subscription-billing',
@@ -155,5 +181,6 @@ export const PLATFORM_NAV: PlatformNavEntry[] = [
         icon: Banknote,
         description: 'Invoices and payments.',
         roles: ['super-administrator', 'platform-administrator'],
+        group: 'platform',
     },
 ];

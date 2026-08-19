@@ -80,6 +80,8 @@ export interface NavItem {
     href: string;
     icon?: LucideIcon;
     isActive?: boolean;
+    exact?: boolean;
+    items?: NavItem[];
 }
 
 export interface RouteMetaType {
