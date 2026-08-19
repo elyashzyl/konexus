@@ -74,7 +74,7 @@ class StudentResource extends JsonResource
             'emergency_contact_address' => $this->emergency_contact_address,
             'parents' => ParentResource::collection($this->whenLoaded('parents')),
             'guardians' => GuardianResource::collection($this->whenLoaded('guardians')),
-            'activities' => ActivityResource::collection($this->whenLoaded('activities')),
+            'activities' => ActivityResource::collection($this->whenLoaded('activitiesAsSubject')),
             'campuses' => $this->whenLoaded('campuses', fn () => $this->campuses->map(fn (Campus $campus) => [
                 'id' => $campus->id,
                 'name' => $campus->name,
