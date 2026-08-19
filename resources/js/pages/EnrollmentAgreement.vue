@@ -24,9 +24,12 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ submitted: [data: { agreement: Record<string, unknown> }] }>();
 
 const photoConsent = ref<boolean | null>(null);
+const onlinePhotoSharing = ref<boolean | null>(null);
 const registrationConsent = ref(false);
 const credentialingConsent = ref(false);
 const rulesConsent = ref(false);
+const motherConfirmation = ref(false);
+const fatherConfirmation = ref(false);
 const errors = ref<Record<string, string>>({});
 const processing = ref(false);
 
@@ -38,9 +41,13 @@ const validate = (): Record<string, string> => {
     const nextErrors: Record<string, string> = {};
 
     if (photoConsent.value === null) nextErrors.photo_consent = 'Please choose an option.';
+    if (onlinePhotoSharing.value === null) nextErrors.online_photo_sharing = 'Please choose an option.';
     if (!registrationConsent.value) nextErrors.registration_consent = 'Please agree to the certificate of registration.';
     if (!credentialingConsent.value) nextErrors.credentialing_consent = 'Please agree to the admission credentialing.';
     if (!rulesConsent.value) nextErrors.rules_consent = 'Please agree to the rules concerning fees.';
+    if (!motherConfirmation.value && !fatherConfirmation.value) {
+        nextErrors.parent_confirmation = 'A parent confirmation is required.';
+    }
 
     return nextErrors;
 };
@@ -56,11 +63,15 @@ const submit = async () => {
 
     const payload = {
         photo_consent: photoConsent.value,
+        online_photo_sharing: onlinePhotoSharing.value,
         registration_consent: registrationConsent.value,
         credentialing_consent: credentialingConsent.value,
         rules_consent: rulesConsent.value,
+        mother_confirmation: motherConfirmation.value,
+        father_confirmation: fatherConfirmation.value,
         date_of_registration: todayIso,
         initial_payment: 10000,
+        initial_payment_status: 'pending',
     };
 
     try {
@@ -85,9 +96,12 @@ onMounted(() => {
     }
 
     photoConsent.value = agreement.photo_consent === true || agreement.photo_consent === 1 || agreement.photo_consent === '1';
+    onlinePhotoSharing.value = agreement.online_photo_sharing === true || agreement.online_photo_sharing === 1 || agreement.online_photo_sharing === '1';
     registrationConsent.value = agreement.registration_consent === true || agreement.registration_consent === 1;
     credentialingConsent.value = agreement.credentialing_consent === true || agreement.credentialing_consent === 1;
     rulesConsent.value = agreement.rules_consent === true || agreement.rules_consent === 1;
+    motherConfirmation.value = agreement.mother_confirmation === true || agreement.mother_confirmation === 1;
+    fatherConfirmation.value = agreement.father_confirmation === true || agreement.father_confirmation === 1;
 });
 </script>
 
@@ -97,8 +111,8 @@ onMounted(() => {
 
         <form @submit.prevent="submit">
             <CardHeader>
-                <CardTitle>School agreement</CardTitle>
-                <CardDescription>Please review and agree to the following before completing your application.</CardDescription>
+                <CardTitle>Attachments & school agreements</CardTitle>
+                <CardDescription>Required consents, parent confirmations, and supporting acknowledgements.</CardDescription>
             </CardHeader>
 
             <CardContent class="grid gap-6">
@@ -185,6 +199,19 @@ onMounted(() => {
                         <span>We hereby bind ourselves to abide by DepEd and BPHS rules and regulations.</span>
                     </label>
                     <InputError :message="errors.rules_consent" />
+                </div>
+
+                <div class="grid gap-3">
+                    <p class="text-sm font-medium text-foreground">Parent confirmations</p>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-sm" :class="motherConfirmation ? 'border-primary/40 bg-primary/5' : ''">
+                        <input v-model="motherConfirmation" type="checkbox" class="mt-0.5 size-4 accent-[hsl(26_57%_40%)]" />
+                        <span>Mother's confirmation — I confirm the information in this application is accurate.</span>
+                    </label>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-sm" :class="fatherConfirmation ? 'border-primary/40 bg-primary/5' : ''">
+                        <input v-model="fatherConfirmation" type="checkbox" class="mt-0.5 size-4 accent-[hsl(26_57%_40%)]" />
+                        <span>Father's confirmation — I confirm the information in this application is accurate.</span>
+                    </label>
+                    <InputError :message="errors.parent_confirmation" />
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">

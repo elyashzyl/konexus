@@ -3,6 +3,7 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import api, { extractError, extractFieldErrors } from '@/lib/api';
@@ -46,6 +47,12 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ submitted: [data: { medical_history: Record<string, unknown> }] }>();
 
 const allergies = ref('');
+const digestiveProblems = ref('');
+const kidneyProblems = ref('');
+const foodIntolerances = ref('');
+const otherConditions = ref('');
+const preferredHospital = ref('');
+const emergencyMedical = ref('');
 const familyHistory = ref<string[]>([]);
 const familyHistoryOthers = ref('');
 const emergencyHospital = ref('');
@@ -81,6 +88,12 @@ const submit = async () => {
 
     const payload = {
         allergies: allergies.value.trim(),
+        digestive_problems: digestiveProblems.value.trim(),
+        kidney_problems: kidneyProblems.value.trim(),
+        food_intolerances: foodIntolerances.value.trim(),
+        other_conditions: otherConditions.value.trim(),
+        preferred_hospital: preferredHospital.value.trim(),
+        emergency_medical_information: emergencyMedical.value.trim(),
         family_history: familyHistory.value,
         family_history_others: familyHistoryOthers.value.trim() || null,
         emergency_hospital: emergencyHospital.value,
@@ -111,6 +124,12 @@ onMounted(() => {
     }
 
     allergies.value = String(medical.allergies ?? '');
+    digestiveProblems.value = String(medical.digestive_problems ?? '');
+    kidneyProblems.value = String(medical.kidney_problems ?? '');
+    foodIntolerances.value = String(medical.food_intolerances ?? '');
+    otherConditions.value = String(medical.other_conditions ?? '');
+    preferredHospital.value = String(medical.preferred_hospital ?? '');
+    emergencyMedical.value = String(medical.emergency_medical_information ?? '');
     familyHistory.value = Array.isArray(medical.family_history) ? medical.family_history.map(String) : [];
     familyHistoryOthers.value = String(medical.family_history_others ?? '');
     emergencyHospital.value = String(medical.emergency_hospital ?? '');
@@ -123,9 +142,9 @@ onMounted(() => {
 
         <form @submit.prevent="submit">
             <CardHeader>
-                <CardTitle>Medical history</CardTitle>
+                <CardTitle>Medical information</CardTitle>
                 <CardDescription>
-                    Please provide any relevant medical information to help us care for your child while in school.
+                    Health records used by the school clinic for emergency care and daily support.
                 </CardDescription>
             </CardHeader>
 

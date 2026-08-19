@@ -74,11 +74,15 @@ class PublicEnrollmentDetailsRequest extends FormRequest
         if ($this->has('agreement')) {
             $rules['agreement'] = ['nullable', 'array'];
             $rules['agreement.photo_consent'] = ['required', 'boolean'];
+            $rules['agreement.online_photo_sharing'] = ['nullable', 'boolean'];
             $rules['agreement.registration_consent'] = ['required', 'accepted'];
             $rules['agreement.credentialing_consent'] = ['required', 'accepted'];
             $rules['agreement.rules_consent'] = ['required', 'accepted'];
+            $rules['agreement.mother_confirmation'] = ['nullable', 'boolean'];
+            $rules['agreement.father_confirmation'] = ['nullable', 'boolean'];
             $rules['agreement.date_of_registration'] = ['nullable', 'date'];
             $rules['agreement.initial_payment'] = ['nullable', 'numeric', 'min:0'];
+            $rules['agreement.initial_payment_status'] = ['nullable', 'string', Rule::in(['unpaid', 'pending', 'paid', 'waived'])];
         }
 
         return $rules;

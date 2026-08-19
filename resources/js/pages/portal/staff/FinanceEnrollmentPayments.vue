@@ -65,6 +65,7 @@ type EnrollmentRecord = {
     enrollment_date: string | null;
     requirements_met: boolean;
     payment_status: string | null;
+    payment_method: string | null;
     down_payment: string | number | null;
     payment_schedule_date: string | null;
     payment_schedule_details: string | null;
@@ -93,11 +94,13 @@ const paymentTarget = ref<EnrollmentRecord | null>(null);
 const paymentSaving = ref(false);
 const paymentForm = ref<{
     payment_status: string;
+    payment_method: string;
     down_payment: string;
     payment_schedule_date: string;
     payment_schedule_details: string;
 }>({
     payment_status: 'paid',
+    payment_method: 'cash',
     down_payment: '',
     payment_schedule_date: '',
     payment_schedule_details: '',
@@ -113,8 +116,8 @@ const paymentOpen = computed({
 });
 
 const metrics = computed(() => [
-    { label: 'Awaiting payment', value: statistics.value?.per_status['for-payment'] ?? 0, detail: 'Approved records ready to be billed', icon: Wallet },
-    { label: 'Awaiting final check', value: statistics.value?.per_status['for-final-check'] ?? 0, detail: 'Payments recorded, back with the registrar', icon: BadgeCheck },
+    { label: 'Awaiting payment', value: statistics.value?.per_status['for-payment'] ?? 0, detail: 'Online transfer or cash at the cashier', icon: Wallet },
+    { label: 'With the principal', value: statistics.value?.per_status['for-principal-approval'] ?? 0, detail: 'Paid — awaiting section assignment', icon: BadgeCheck },
     { label: 'Officially enrolled', value: statistics.value?.officially_enrolled ?? 0, detail: 'Completed enrollments this cycle', icon: UserCheck },
     { label: 'Active pipeline', value: statistics.value?.active ?? 0, detail: 'Records still in the admissions chain', icon: CalendarCheck2 },
 ]);
@@ -162,6 +165,7 @@ function openPaymentDialog(record: EnrollmentRecord): void {
     paymentTarget.value = record;
     paymentForm.value = {
         payment_status: record.payment_status ?? 'paid',
+        payment_method: record.payment_method ?? 'cash',
         down_payment: record.down_payment ? String(record.down_payment) : '',
         payment_schedule_date: record.payment_schedule_date ?? '',
         payment_schedule_details: record.payment_schedule_details ?? '',
@@ -184,11 +188,12 @@ async function submitPayment(): Promise<void> {
     try {
         await api.post(`/enrollments/${paymentTarget.value.id}/record-payment`, {
             payment_status: paymentForm.value.payment_status,
+            payment_method: paymentForm.value.payment_method,
             down_payment: paymentForm.value.down_payment ? Number(paymentForm.value.down_payment) : null,
             payment_schedule_date: paymentForm.value.payment_schedule_date || null,
             payment_schedule_details: paymentForm.value.payment_schedule_details.trim() || null,
         });
-        toast.success('Payment recorded; sent to the registrar for the final check.');
+        toast.success('Payment recorded. The principal can now assign a section.');
         paymentTarget.value = null;
         await load();
     } catch (error) {
@@ -216,7 +221,7 @@ onMounted(async () => {
                 eyebrow="Finance office"
                 index="01"
                 title="Enrollment payments"
-                description="Record the payment for approved enrollments so the registrar can run the final check and confirm the learner."
+                description="Mark elementary and high school tuition as paid — online or cash at the school — so the principal can assign a section."
             >
                 <template #actions>
                     <Button variant="outline" size="sm" :disabled="refreshing" @click="refresh"
@@ -320,12 +325,12 @@ onMounted(async () => {
                         class="mt-5"
                         :icon="Receipt"
                         title="No enrollments awaiting payment"
-                        description="Approved records reach this queue after the registrar confirms the placement."
+                        description="Completed applications reach this queue so families can pay online or in cash."
                     />
                 </section>
 
                 <footer class="portal-rise mt-16 border-t border-border/60 pt-6 text-xs text-muted-foreground" style="animation-delay: 220ms">
-                    Recording a payment moves the enrollment to the registrar for the final details and requirements check.
+                    Recording a payment (online or cash) sends the learner to the principal for section and class assignment.
                 </footer>
             </template>
         </div>

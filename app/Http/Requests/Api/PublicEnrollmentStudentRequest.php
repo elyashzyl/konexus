@@ -35,6 +35,7 @@ class PublicEnrollmentStudentRequest extends FormRequest
             'nickname' => ['nullable', 'string', 'max:100'],
             'birth_date' => ['required', 'date', 'before:today'],
             'gender' => ['required', Rule::in(['male', 'female'])],
+            'nationality' => ['nullable', 'string', 'max:100'],
             'citizenship' => ['nullable', 'string', 'max:100'],
             'religion' => ['nullable', 'string', 'max:100'],
             'mobile_number' => ['nullable', 'string', 'max:30'],

@@ -188,7 +188,7 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
             {
                 label: 'Admissions & records',
                 items: [
-                    { title: 'Enrollment operations', href: `${overviewHref.value}/enrollment-operations`, icon: ClipboardList },
+                    { title: 'Enrollment desk', href: `${overviewHref.value}/enrollment-operations`, icon: ClipboardList },
                     { title: 'Enrollment data', href: `${overviewHref.value}/enrollments`, icon: GraduationCap },
                     { title: 'Students', href: `${overviewHref.value}/students`, icon: Users },
                 ],
@@ -208,7 +208,7 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
             {
                 label: 'Leadership',
                 items: [
-                    { title: 'Enrollment approvals', href: `${overviewHref.value}/enrollment-approvals`, icon: ClipboardList },
+                    { title: 'Section assignment', href: `${overviewHref.value}/enrollment-approvals`, icon: ClipboardList },
                 ],
             },
             {

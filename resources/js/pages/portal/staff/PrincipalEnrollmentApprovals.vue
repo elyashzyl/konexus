@@ -11,6 +11,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import api, { extractError } from '@/lib/api';
 import type { Paginated } from '@/types/crud';
@@ -59,7 +66,7 @@ type EnrollmentRecord = {
     requirements_met: boolean;
     student: { name: string; student_number: string | null; lrn: string | null } | null;
     academic_year: { name: string } | null;
-    grade_level: { id: number; name: string } | null;
+    grade_level: { id: number; name: string; education_level?: string | null } | null;
     section: { id: number; name: string } | null;
     campus: { name: string } | null;
 };
@@ -82,6 +89,26 @@ const rejectTarget = ref<EnrollmentRecord | null>(null);
 const rejectReason = ref('');
 const rejectSaving = ref(false);
 
+type PlacementRow = { id: number; name: string; grade_level_id?: number; max_capacity?: number | null };
+const assignTarget = ref<EnrollmentRecord | null>(null);
+const assignSaving = ref(false);
+const gradeLevels = ref<PlacementRow[]>([]);
+const sections = ref<(PlacementRow & { grade_level_id: number; max_capacity: number | null })[]>([]);
+const assignForm = ref<{ grade_level_id: number | null; section_id: number | null }>({ grade_level_id: null, section_id: null });
+
+const assignOpen = computed({
+    get: () => assignTarget.value !== null,
+    set: (open: boolean) => {
+        if (!open) {
+            assignTarget.value = null;
+        }
+    },
+});
+
+const availableSections = computed(() =>
+    assignForm.value.grade_level_id ? sections.value.filter((section) => section.grade_level_id === assignForm.value.grade_level_id) : [],
+);
+
 const rejectOpen = computed({
     get: () => rejectTarget.value !== null,
     set: (open: boolean) => {
@@ -93,9 +120,9 @@ const rejectOpen = computed({
 });
 
 const metrics = computed(() => [
-    { label: 'Awaiting your approval', value: statistics.value?.per_status['for-principal-approval'] ?? 0, detail: 'Applications queued for the principal', icon: Stamp },
-    { label: 'With the registrar', value: statistics.value?.per_status['for-registrar-review'] ?? 0, detail: 'Already approved and under placement', icon: ClipboardCheck },
-    { label: 'Awaiting payment', value: statistics.value?.per_status['for-payment'] ?? 0, detail: 'Approved records with Accounting', icon: UsersRound },
+    { label: 'Awaiting section', value: statistics.value?.per_status['for-principal-approval'] ?? 0, detail: 'Paid learners ready for class assignment', icon: Stamp },
+    { label: 'Awaiting payment', value: statistics.value?.per_status['for-payment'] ?? 0, detail: 'Still with Accounting', icon: ClipboardCheck },
+    { label: 'In pipeline', value: statistics.value?.active ?? 0, detail: 'Elementary and high school applications', icon: UsersRound },
     { label: 'Officially enrolled', value: statistics.value?.officially_enrolled ?? 0, detail: 'Completed admissions this cycle', icon: UserCheck },
 ]);
 
@@ -138,21 +165,56 @@ async function refresh(): Promise<void> {
     refreshing.value = false;
 }
 
-async function approve(record: EnrollmentRecord): Promise<void> {
-    if (!window.confirm(`Approve the enrollment of ${record.student?.name ?? 'this learner'}? It moves to the registrar for placement.`)) {
+function openAssign(record: EnrollmentRecord): void {
+    assignTarget.value = record;
+    assignForm.value = {
+        grade_level_id: record.grade_level?.id ?? null,
+        section_id: record.section?.id ?? null,
+    };
+}
+
+async function submitAssign(): Promise<void> {
+    if (!assignTarget.value) {
         return;
     }
 
-    busyId.value = record.id;
+    if (!assignForm.value.grade_level_id || !assignForm.value.section_id) {
+        toast.error('Choose a grade level and section.');
+        return;
+    }
+
+    assignSaving.value = true;
 
     try {
-        await api.post(`/enrollments/${record.id}/principal-approve`);
-        toast.success(`${record.student?.name ?? 'Enrollment'} approved.`);
+        await api.post(`/enrollments/${assignTarget.value.id}/principal-approve`, {
+            grade_level_id: assignForm.value.grade_level_id,
+            section_id: assignForm.value.section_id,
+        });
+        toast.success(`${assignTarget.value.student?.name ?? 'Learner'} assigned and officially enrolled.`);
+        assignTarget.value = null;
         await load();
     } catch (error) {
         toast.error(extractError(error));
     } finally {
-        busyId.value = null;
+        assignSaving.value = false;
+    }
+}
+
+async function loadPlacementOptions(): Promise<void> {
+    try {
+        const [gradeLevelsResponse, sectionsResponse] = await Promise.all([
+            api.get<{ data: Paginated<PlacementRow> }>('/grade-levels', {
+                params: { per_page: 100, sort_by: 'sequence', sort_dir: 'asc' },
+            }),
+            api.get<{ data: Paginated<PlacementRow & { grade_level_id: number; max_capacity: number | null }> }>('/sections', {
+                params: { per_page: 200, sort_by: 'name', sort_dir: 'asc' },
+            }),
+        ]);
+
+        gradeLevels.value = gradeLevelsResponse.data.data.items;
+        sections.value = sectionsResponse.data.data.items;
+    } catch (error) {
+        toast.error(extractError(error));
     }
 }
 
@@ -188,7 +250,7 @@ async function submitReject(): Promise<void> {
 }
 
 onMounted(async () => {
-    await load();
+    await Promise.all([load(), loadPlacementOptions()]);
     loading.value = false;
 });
 </script>
@@ -204,8 +266,8 @@ onMounted(async () => {
                 :icon="ShieldCheck"
                 eyebrow="Leadership office"
                 index="01"
-                title="Enrollment approvals"
-                description="Review applications that reached your desk and approve or reject them before the registrar proceeds with placement."
+                title="Section assignment"
+                description="After Accounting marks tuition paid, assign elementary and high school learners to their sections and classes."
             >
                 <template #actions>
                     <Button variant="outline" size="sm" :disabled="refreshing" @click="refresh"
@@ -247,9 +309,9 @@ onMounted(async () => {
                 <section class="portal-rise mt-12" style="animation-delay: 160ms">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Awaiting your approval</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Paid and ready</p>
                             <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">
-                                Applications for the principal
+                                Assign a section
                             </h2>
                         </div>
                     </div>
@@ -298,9 +360,8 @@ onMounted(async () => {
                                 <Button size="sm" variant="outline" :disabled="busyId === record.id" @click="openReject(record)">
                                     <XCircle class="size-3.5" /> Reject
                                 </Button>
-                                <Button size="sm" :disabled="busyId === record.id" @click="approve(record)">
-                                    <LoaderCircle v-if="busyId === record.id" class="size-3.5 animate-spin" />
-                                    <BadgeCheck v-else class="size-3.5" /> Approve
+                                <Button size="sm" :disabled="busyId === record.id" @click="openAssign(record)">
+                                    <BadgeCheck class="size-3.5" /> Assign section
                                 </Button>
                             </div>
                         </article>
@@ -310,16 +371,67 @@ onMounted(async () => {
                         v-else
                         class="mt-5"
                         :icon="BadgeCheck"
-                        title="Nothing awaiting your approval"
-                        description="Submitted applications reach your desk as soon as they are ready for principal sign-off."
+                        title="No paid learners waiting"
+                        description="Once Accounting marks tuition paid, learners appear here for section assignment."
                     />
                 </section>
 
                 <footer class="portal-rise mt-16 border-t border-border/60 pt-6 text-xs text-muted-foreground" style="animation-delay: 220ms">
-                    Approved applications move to the registrar for placement; rejected records are returned to the office with the reason.
+                    Assigning a section officially enrolls the learner and builds the class roster.
                 </footer>
             </template>
         </div>
+
+        <Dialog v-model:open="assignOpen">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle class="font-display text-2xl font-medium">Assign section</DialogTitle>
+                    <DialogDescription>
+                        Place {{ assignTarget?.student?.name ?? 'this learner' }} in an elementary or high school section.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-5">
+                    <div class="space-y-2">
+                        <Label for="assign-grade">Grade level</Label>
+                        <Select
+                            :model-value="assignForm.grade_level_id ? String(assignForm.grade_level_id) : undefined"
+                            @update:model-value="(value: string) => { assignForm.grade_level_id = Number(value); assignForm.section_id = null; }"
+                        >
+                            <SelectTrigger id="assign-grade"><SelectValue placeholder="Select grade" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="grade in gradeLevels" :key="grade.id" :value="String(grade.id)">{{ grade.name }}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="assign-section">Section / class</Label>
+                        <Select
+                            :model-value="assignForm.section_id ? String(assignForm.section_id) : undefined"
+                            @update:model-value="(value: string) => { assignForm.section_id = Number(value); }"
+                            :disabled="!assignForm.grade_level_id"
+                        >
+                            <SelectTrigger id="assign-section">
+                                <SelectValue :placeholder="assignForm.grade_level_id ? 'Select section' : 'Choose a grade first'" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="section in availableSections" :key="section.id" :value="String(section.id)">
+                                    {{ section.name }}{{ section.max_capacity ? ` · ${section.max_capacity} seats` : '' }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <DialogFooter class="pt-2">
+                    <Button type="button" variant="outline" @click="assignTarget = null">Cancel</Button>
+                    <Button type="button" :disabled="assignSaving" @click="submitAssign">
+                        <LoaderCircle v-if="assignSaving" class="size-3.5 animate-spin" />
+                        Assign & officially enroll
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <Dialog v-model:open="rejectOpen">
             <DialogContent class="sm:max-w-md">
