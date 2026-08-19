@@ -504,7 +504,7 @@ class EnrollmentController extends CrudController
 
         $this->authorize('view', $enrollment);
 
-        $activities = $enrollment->activities()->orderByDesc('created_at')->paginate(20);
+        $activities = $enrollment->activitiesAsSubject()->orderByDesc('created_at')->paginate(20);
 
         return $this->success([
             'activities' => [
