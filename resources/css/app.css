@@ -132,3 +132,36 @@ html {
 .index-num {
     font-variant-numeric: tabular-nums lining-nums;
 }
+
+/* Themed scrollbars — thin, rounded, and tied to the sidebar palette so they
+   match the warm-neutral/terracotta theme in both light and dark mode. */
+@layer utilities {
+    .scrollbar-themed {
+        scrollbar-width: thin;
+        scrollbar-color: hsl(var(--sidebar-border)) transparent;
+    }
+
+    .scrollbar-themed::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    .scrollbar-themed::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .scrollbar-themed::-webkit-scrollbar-thumb {
+        background-color: hsl(var(--sidebar-border));
+        border-radius: 9999px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+    }
+
+    .scrollbar-themed::-webkit-scrollbar-thumb:hover {
+        background-color: hsl(var(--muted-foreground) / 0.6);
+    }
+
+    .scrollbar-themed::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
