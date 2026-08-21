@@ -110,6 +110,20 @@ export interface AnnouncementItem {
     published_at: string | null;
 }
 
+export interface SchoolCalendarEventItem {
+    id: number;
+    title: string;
+    category: string | null;
+    description: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    all_day: boolean;
+    start_time: string | null;
+    end_time: string | null;
+    location: string | null;
+    is_active: boolean;
+}
+
 export interface ActivityLogEntry {
     id: number;
     log_name: string;

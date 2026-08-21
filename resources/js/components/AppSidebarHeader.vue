@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import GlobalSearch from '@/components/GlobalSearch.vue';
 import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -46,7 +45,6 @@ withDefaults(defineProps<Props>(), {
             </div>
 
             <div class="ml-auto flex items-center gap-1">
-                <GlobalSearch />
                 <NotificationBell />
             </div>
         </header>

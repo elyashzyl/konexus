@@ -174,6 +174,12 @@ export const portalRoutes: RouteRecordRaw[] = [
                 component: () => import('@/pages/portal/staff/SchoolSubscription.vue'),
                 meta: { title: 'Subscription & Billing', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'Subscription & Billing' }] },
             },
+            {
+                path: 'calendar',
+                name: 'portal.staff.calendar',
+                component: () => import('@/pages/portal/staff/SchoolCalendar.vue'),
+                meta: { title: 'School Calendar', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'School Calendar' }] },
+            },
         ],
     },
     {

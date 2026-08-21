@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import WeeklyScheduleGrid from '@/components/portal/WeeklyScheduleGrid.vue';
 import PortalEmptyState from '@/components/portal/PortalEmptyState.vue';
 import PortalPageHeader from '@/components/portal/PortalPageHeader.vue';
 import { extractError } from '@/lib/api';
 import { portalApi } from '@/lib/portalApi';
 import type { PortalScheduleEntry } from '@/types/platform';
 import { CalendarDays } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 const loading = ref(true);
@@ -20,13 +21,6 @@ onMounted(async () => {
         loading.value = false;
     }
 });
-
-const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const sortedSchedule = computed(() => [...schedule.value].sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)));
-
-function pad(index: number): string {
-    return String(index + 1).padStart(2, '0');
-}
 </script>
 
 <template>
@@ -39,17 +33,17 @@ function pad(index: number): string {
             description="Your timetable for the current term, as published by the registrar."
         >
             <template #actions>
-                <span v-if="sortedSchedule.length" class="inline-flex items-center gap-2.5 rounded-full border border-primary/15 bg-primary/6 px-4 py-1.5 font-mono text-xs text-primary">
-                    <span class="index-num">{{ sortedSchedule.length }}</span> entries
+                <span v-if="schedule.length" class="inline-flex items-center gap-2.5 rounded-full border border-primary/15 bg-primary/6 px-4 py-1.5 font-mono text-xs text-primary">
+                    <span class="index-num">{{ schedule.length }}</span> entries
                 </span>
             </template>
         </PortalPageHeader>
 
-        <div v-if="loading" class="mt-12 space-y-3">
-            <div v-for="i in 4" :key="i" class="h-12 animate-pulse rounded-xl bg-muted/60" />
+        <div v-if="loading" class="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div v-for="i in 7" :key="i" class="h-40 animate-pulse rounded-2xl bg-muted/60" />
         </div>
 
-        <div v-else-if="!sortedSchedule.length" class="mt-12">
+        <div v-else-if="!schedule.length" class="mt-12">
             <PortalEmptyState
                 :icon="CalendarDays"
                 index="02"
@@ -58,17 +52,6 @@ function pad(index: number): string {
             />
         </div>
 
-        <div v-else class="portal-rise mt-12 divide-y divide-border/60 border-y border-border/60">
-            <div v-for="(entry, index) in sortedSchedule" :key="entry.id" class="flex items-center gap-4 py-4">
-                <span class="index-num w-7 shrink-0 font-mono text-xs text-muted-foreground/60">{{ pad(index) }}</span>
-                <div class="min-w-0 flex-1">
-                    <p class="truncate text-[15px] font-medium text-foreground">{{ entry.subject }}</p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">{{ entry.room }}</p>
-                </div>
-                <span class="shrink-0 font-mono text-[11px] text-muted-foreground">
-                    {{ entry.day }} · {{ entry.start_time }}–{{ entry.end_time }}
-                </span>
-            </div>
-        </div>
+        <WeeklyScheduleGrid v-else class="portal-rise mt-12" :entries="schedule" detail="room" />
     </main>
 </template>

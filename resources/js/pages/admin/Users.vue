@@ -16,6 +16,7 @@ import { loadOptions } from '@/lib/crud';
 import { platformApi, type AdminRole, type AdminUser, type UserInput } from '@/lib/platformApi';
 import { homePathForRoles } from '@/lib/roles';
 import { useAuthStore } from '@/stores/auth';
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch';
 import type { CrudOption } from '@/types/crud';
 import { Eye, KeyRound, Pencil, Plus, Trash2, UserCog } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -84,6 +85,11 @@ async function refresh(): Promise<void> {
         loading.value = false;
     }
 }
+
+useDebouncedSearch(search, () => {
+    page.value = 1;
+    refresh();
+});
 
 function openCreate(): void {
     editing.value = null;

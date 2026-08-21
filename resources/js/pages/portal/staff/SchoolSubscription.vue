@@ -22,6 +22,7 @@ interface SchoolSubscriptionSummary {
         auto_renewal: boolean;
         allows_access: boolean;
         plan: { id: number; name: string; code: string; billing_cycle: string } | null;
+        features?: { feature_code: string; is_enabled: boolean }[];
     } | null;
     features: string[];
     limits: Record<string, number | null>;

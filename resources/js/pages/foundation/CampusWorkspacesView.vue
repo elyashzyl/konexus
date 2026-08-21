@@ -174,13 +174,14 @@ onMounted(async () => {
 
 <template>
     <div class="relative min-h-full">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(52rem_25rem_at_50%_-30%,hsl(var(--primary)/0.12),transparent)]" />
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(45rem_22rem_at_50%_-28%,hsl(26_57%_40%/0.08),transparent)]" />
 
         <div class="relative w-full px-5 pb-20 pt-10 sm:px-8 lg:px-12">
             <AdminPageHeader
                 :icon="Building2"
+                index="02"
                 eyebrow="School setup"
-                title="Campus Workspaces"
+                title="Campus workspaces"
                 description="Create a campus in its school profile, then switch operational context without mixing enrolments, classes, attendance, or gradebooks."
             >
                 <template #actions>
@@ -192,15 +193,16 @@ onMounted(async () => {
             </AdminPageHeader>
 
             <section class="portal-rise mt-8 grid gap-4 lg:grid-cols-[1.45fr_0.85fr]" style="animation-delay: 60ms">
-                <Card class="overflow-hidden border-primary/15 bg-card/95">
+                <Card class="relative overflow-hidden border-border/60 bg-card/60">
+                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                     <CardContent class="p-0">
                         <div class="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex min-w-0 items-center gap-4">
-                                <div class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                                <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
                                     <Building2 class="size-6" />
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Active workspace</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Active workspace</p>
                                     <h2 class="mt-1 truncate font-display text-2xl font-semibold tracking-tight">{{ workspace.activeCampus?.name ?? 'No campus selected' }}</h2>
                                     <p class="mt-1 text-sm text-muted-foreground">{{ workspace.activeCampus?.school_profile?.name ?? auth.user?.school?.name ?? 'Create a campus to begin school operations.' }}</p>
                                 </div>
@@ -210,26 +212,27 @@ onMounted(async () => {
                                 Workspace scoped
                             </Badge>
                         </div>
-                        <div class="grid border-t bg-muted/30 sm:grid-cols-3">
-                            <div class="flex items-center gap-2 border-b px-6 py-4 text-sm sm:border-b-0 sm:border-r">
+                        <div class="grid border-t sm:grid-cols-3">
+                            <div class="flex items-center gap-2 border-b px-6 py-4 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:border-b-0 sm:border-r">
                                 <ShieldCheck class="size-4 text-primary" />
-                                <span>School profile attached</span>
+                                <span>Profile attached</span>
                             </div>
-                            <div class="flex items-center gap-2 border-b px-6 py-4 text-sm sm:border-b-0 sm:border-r">
+                            <div class="flex items-center gap-2 border-b px-6 py-4 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:border-b-0 sm:border-r">
                                 <Settings2 class="size-4 text-primary" />
                                 <span>Saved per user</span>
                             </div>
-                            <div class="flex items-center gap-2 px-6 py-4 text-sm">
+                            <div class="flex items-center gap-2 px-6 py-4 text-xs uppercase tracking-[0.12em] text-muted-foreground">
                                 <MapPin class="size-4 text-primary" />
-                                <span>Operations stay local</span>
+                                <span>Operations local</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card class="bg-card/90">
+                <Card class="relative overflow-hidden border-border/60 bg-card/60">
+                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                     <CardHeader class="pb-3">
-                        <CardTitle class="text-base">How workspaces behave</CardTitle>
+                        <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">How workspaces behave</CardTitle>
                         <CardDescription>School identity is shared; operational records are not.</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-3 text-sm text-muted-foreground">
@@ -242,10 +245,16 @@ onMounted(async () => {
             <section class="portal-rise mt-8" style="animation-delay: 120ms">
                 <div class="mb-4 flex items-end justify-between gap-4">
                     <div>
-                        <h2 class="font-display text-2xl font-semibold tracking-tight">Available campuses</h2>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Workspaces</p>
+                        <h2 class="mt-2 font-display text-2xl font-semibold tracking-tight">Available campuses</h2>
                         <p class="mt-1 text-sm text-muted-foreground">Choose a card to enter that campus workspace.</p>
                     </div>
-                    <p class="hidden text-sm text-muted-foreground sm:block">{{ campuses.length }} configured</p>
+                    <span
+                        v-if="campuses.length"
+                        class="hidden items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 font-mono text-xs text-primary sm:inline-flex"
+                    >
+                        <span class="index-num">{{ campuses.length }}</span> configured
+                    </span>
                 </div>
 
                 <div v-if="loading" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -254,28 +263,29 @@ onMounted(async () => {
 
                 <div v-else-if="campuses.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <Card
-                        v-for="campus in campuses"
+                        v-for="(campus, index) in campuses"
                         :key="campus.id"
-                        class="group relative overflow-hidden transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+                        class="group relative overflow-hidden border-border/60 bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
                         :class="campus.id === workspace.activeCampus?.id ? 'border-primary/45 shadow-sm ring-1 ring-primary/15' : ''"
                     >
                         <div v-if="campus.id === workspace.activeCampus?.id" class="absolute inset-x-0 top-0 h-1 bg-primary" />
+                        <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                         <CardHeader class="pb-4 pt-6">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex min-w-0 items-center gap-3">
-                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 class="size-5" /></div>
+                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10"><Building2 class="size-5" /></div>
                                     <div class="min-w-0">
                                         <CardTitle class="truncate text-base">{{ campus.name }}</CardTitle>
-                                        <p class="mt-0.5 text-xs text-muted-foreground">{{ campus.school_profile?.name ?? 'School profile' }}</p>
+                                        <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ campus.school_profile?.name ?? `No. ${String(index + 1).padStart(2, '0')}` }}</p>
                                     </div>
                                 </div>
-                                <Badge :variant="campus.is_active ? 'secondary' : 'outline'" class="shrink-0 text-[10px]">{{ campus.is_active ? 'Active' : 'Inactive' }}</Badge>
+                                <Badge variant="outline" class="shrink-0 text-[10px]">{{ campus.is_active ? 'Active' : 'Inactive' }}</Badge>
                             </div>
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <p class="flex min-h-10 items-start gap-2 text-sm text-muted-foreground"><MapPin class="mt-0.5 size-4 shrink-0 text-primary/80" />{{ campus.address || 'Address not yet configured' }}</p>
                             <div class="flex items-center justify-between gap-3 border-t pt-3">
-                                <span class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{ campus.code || 'No code' }}</span>
+                                <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{{ campus.code || 'No code' }}</span>
                                 <div class="flex items-center gap-1">
                                     <Button
                                         variant="ghost"
@@ -317,13 +327,22 @@ onMounted(async () => {
             </section>
 
             <section v-if="showCreate" class="portal-rise mt-8" style="animation-delay: 160ms">
-                <Card class="border-primary/25 shadow-md">
+                <Card class="relative overflow-hidden border-primary/25 shadow-md">
+                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                     <CardHeader class="flex-row items-start justify-between gap-4 space-y-0">
                         <div>
-                            <CardTitle>{{ editingCampus ? 'Edit campus workspace' : 'Create campus workspace' }}</CardTitle>
+                            <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">
+                                {{ editingCampus ? 'Edit campus workspace' : 'Create campus workspace' }}
+                            </CardTitle>
                             <CardDescription class="mt-1">The school profile link is required before this campus can be used for enrollment and academic operations.</CardDescription>
                         </div>
-                        <Button size="icon" variant="ghost" aria-label="Close campus setup" @click="showCreate = false; editingCampus = null"><X class="size-4" /></Button>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <Badge variant="outline" class="hidden gap-1.5 border-primary/25 bg-primary/5 px-3 py-1 text-primary sm:inline-flex">
+                                <CheckCircle2 class="size-3.5" />
+                                {{ editingCampus ? 'Editing' : 'Creating' }}
+                            </Badge>
+                            <Button size="icon" variant="ghost" aria-label="Close campus setup" @click="showCreate = false; editingCampus = null"><X class="size-4" /></Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <form class="grid gap-5 sm:grid-cols-2" @submit.prevent="saveCampus">

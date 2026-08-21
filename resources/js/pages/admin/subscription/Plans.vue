@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { extractError, extractFieldErrors } from '@/lib/api';
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch';
 import { subscriptionApi, type PlanFeatureOption, type SubscriptionPlanItem } from '@/lib/subscriptionApi';
 import { Boxes, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
@@ -84,6 +85,11 @@ async function refresh(): Promise<void> {
         loading.value = false;
     }
 }
+
+useDebouncedSearch(search, () => {
+    page.value = 1;
+    refresh();
+});
 
 const num = (v: string | number | null | undefined): number | null => {
     if (v === '' || v === null || v === undefined) return null;

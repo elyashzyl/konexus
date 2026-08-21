@@ -26,7 +26,6 @@ use App\Http\Controllers\Api\V1\EnrollmentController;
 use App\Http\Controllers\Api\V1\EnrollmentDocumentController;
 use App\Http\Controllers\Api\V1\EnrollmentRequirementController;
 use App\Http\Controllers\Api\V1\FeatureController;
-use App\Http\Controllers\Api\V1\GlobalSearchController;
 use App\Http\Controllers\Api\V1\GradeCorrectionController;
 use App\Http\Controllers\Api\V1\GradeLevelController;
 use App\Http\Controllers\Api\V1\GradeRecordController;
@@ -489,9 +488,6 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
         // ─────────────────────────────────────────
         // Part 8 – Platform & Integration
         // ─────────────────────────────────────────
-
-        // Global (spotlight) search for the navigation bar.
-        Route::get('search', GlobalSearchController::class)->name('search');
 
         // Notification Center (any authenticated user).
         Route::prefix('notifications')->name('notifications.')->group(function (): void {

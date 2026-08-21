@@ -66,6 +66,7 @@ export const STAFF_PORTALS: StaffPortalConfig[] = [
                 description: 'Open the guided online application families use before office review.',
             },
             { key: 'announcements', title: 'Announcements', description: 'Publish the notices applicants and families need.' },
+            { key: 'calendar', title: 'School calendar', description: 'The official dates and activities shaping every term.' },
         ],
     },
     {

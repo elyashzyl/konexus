@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractError, extractFieldErrors } from '@/lib/api';
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch';
 import {
     subscriptionApi,
     type LicenseItem,
@@ -44,7 +45,6 @@ const search = ref('');
 const statusFilter = ref<'all' | string>('all');
 const fieldErrors = ref<Record<string, string[]>>({});
 
-const dialogOpen = ref(false);
 const editing = ref<TenantItem | null>(null);
 const form = ref<{ name: string; code: string; status: string }>({ name: '', code: '', status: 'active' });
 
@@ -252,6 +252,11 @@ async function refresh(): Promise<void> {
         loading.value = false;
     }
 }
+
+useDebouncedSearch(search, () => {
+    page.value = 1;
+    refresh();
+});
 
 const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage)));
 

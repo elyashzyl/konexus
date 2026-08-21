@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { extractError, extractFieldErrors } from '@/lib/api';
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch';
 import { loadOptions } from '@/lib/crud';
 import {
     subscriptionApi,
@@ -197,6 +198,11 @@ async function refresh(): Promise<void> {
         loading.value = false;
     }
 }
+
+useDebouncedSearch(search, () => {
+    page.value = 1;
+    refresh();
+});
 
 const statusLabel: Record<string, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline' }> = {
     trial: { label: 'Trial', variant: 'secondary' },

@@ -46,6 +46,13 @@ abstract class CrudService
      */
     protected array $with = [];
 
+    /**
+     * Relations counted with every record (`{relation}_count` attributes).
+     *
+     * @var list<string>
+     */
+    protected array $withCount = [];
+
     protected string $defaultSortBy = 'id';
 
     protected string $defaultSortDir = 'asc';
@@ -149,6 +156,10 @@ abstract class CrudService
             $query->with($this->with);
         }
 
+        if ($this->withCount !== []) {
+            $query->withCount($this->withCount);
+        }
+
         if ($request->trashed()) {
             $query->onlyTrashed();
         }
@@ -195,6 +206,10 @@ abstract class CrudService
 
         if ($this->with !== []) {
             $query->with($this->with);
+        }
+
+        if ($this->withCount !== []) {
+            $query->withCount($this->withCount);
         }
 
         return $query->findOrFail($id);

@@ -15,7 +15,7 @@ import { foundationModuleByKey } from '@/modules/foundation/config';
 import { useAuthStore } from '@/stores/auth';
 import { useWorkspaceStore } from '@/stores/workspace';
 import type { CrudField } from '@/types/crud';
-import { Building2, ChevronRight, Plus, Save, Trash2 } from 'lucide-vue-next';
+import { Building2, CheckCircle2, ChevronRight, Plus, Save, Trash2 } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -200,8 +200,9 @@ onMounted(async () => {
         <div class="relative w-full px-5 pt-10 pb-20 sm:px-8 lg:px-12">
             <AdminPageHeader
                 :icon="Building2"
-                eyebrow="School"
-                title="School Profile"
+                index="01"
+                eyebrow="School setup"
+                title="School profile"
                 description="Your school's identity and contact details. Super administrators can add and manage every school; school administrators edit the school they manage."
             >
                 <template #actions>
@@ -215,10 +216,16 @@ onMounted(async () => {
             <section v-if="isSuperAdmin" class="portal-rise mt-8" style="animation-delay: 60ms">
                 <div class="mb-4 flex items-end justify-between gap-4">
                     <div>
-                        <h2 class="font-display text-2xl font-semibold tracking-tight">Schools</h2>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Directory</p>
+                        <h2 class="mt-2 font-display text-2xl font-semibold tracking-tight">Schools</h2>
                         <p class="mt-1 text-sm text-muted-foreground">Pick a school card to view or edit its profile.</p>
                     </div>
-                    <p class="hidden text-sm text-muted-foreground sm:block">{{ schools.length }} configured</p>
+                    <span
+                        v-if="schools.length"
+                        class="hidden items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 font-mono text-xs text-primary sm:inline-flex"
+                    >
+                        <span class="index-num">{{ schools.length }}</span> configured
+                    </span>
                 </div>
 
                 <div v-if="loading" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -227,25 +234,34 @@ onMounted(async () => {
 
                 <div v-else-if="schools.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <Card
-                        v-for="school in schools"
+                        v-for="(school, index) in schools"
                         :key="school.id"
-                        class="group relative overflow-hidden transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+                        class="group relative overflow-hidden border-border/60 bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
                         :class="school.id === selectedId && !creating ? 'border-primary/45 shadow-sm ring-1 ring-primary/15' : ''"
                     >
+                        <div v-if="school.id === selectedId && !creating" class="absolute inset-x-0 top-0 h-1 bg-primary" />
+                        <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                         <CardHeader class="pb-4 pt-6">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex min-w-0 items-center gap-3">
-                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 class="size-5" /></div>
+                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10"><Building2 class="size-5" /></div>
                                     <div class="min-w-0">
                                         <CardTitle class="truncate text-base">{{ school.name }}</CardTitle>
-                                        <p class="mt-0.5 text-xs text-muted-foreground">{{ school.short_name ?? 'School profile' }}</p>
+                                        <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ school.short_name ?? `No. ${String(index + 1).padStart(2, '0')}` }}</p>
                                     </div>
                                 </div>
-                                <Badge :variant="school.is_active ? 'secondary' : 'outline'" class="shrink-0 text-[10px]">{{ school.is_active ? 'Active' : 'Inactive' }}</Badge>
+                                <Badge variant="outline" class="shrink-0 text-[10px]">{{ school.is_active ? 'Active' : 'Inactive' }}</Badge>
                             </div>
                         </CardHeader>
                         <CardContent class="space-y-4">
-                            <p class="flex min-h-10 items-start gap-2 text-sm text-muted-foreground">{{ school.is_primary ? 'Primary school profile' : 'Standard school profile' }}</p>
+                            <p class="flex min-h-10 items-center">
+                                <span
+                                    class="w-fit rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em]"
+                                    :class="school.is_primary ? 'border-primary/25 bg-primary/5 text-primary' : 'border-border bg-muted/40 text-muted-foreground'"
+                                >
+                                    {{ school.is_primary ? 'Primary profile' : 'School profile' }}
+                                </span>
+                            </p>
                             <div class="flex items-center justify-between gap-3 border-t pt-3">
                                 <Button
                                     variant="ghost"
@@ -257,7 +273,12 @@ onMounted(async () => {
                                 >
                                     <Trash2 class="size-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" @click="loadSchool(school.id)">
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    class="font-medium uppercase tracking-[0.12em] text-primary"
+                                    @click="loadSchool(school.id)"
+                                >
                                     Edit
                                     <ChevronRight class="size-4" />
                                 </Button>
@@ -277,12 +298,23 @@ onMounted(async () => {
             </section>
 
             <section class="portal-rise mt-8" style="animation-delay: 120ms">
-                <Card>
+                <Card class="relative overflow-hidden border-border/60 bg-card/60">
+                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
                     <CardHeader>
-                        <CardTitle>{{ creating ? 'New school profile' : 'School details' }}</CardTitle>
-                        <CardDescription>
-                            {{ creating ? 'Fill in the new school\u2019s information.' : 'View and update the school\u2019s details.' }}
-                        </CardDescription>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">
+                                    {{ creating ? 'New school profile' : 'School details' }}
+                                </CardTitle>
+                                <CardDescription class="mt-1">
+                                    {{ creating ? 'Fill in the new school’s information.' : 'View and update the school’s details.' }}
+                                </CardDescription>
+                            </div>
+                            <Badge variant="outline" class="w-fit shrink-0 gap-1.5 border-primary/25 bg-primary/5 px-3 py-1 text-primary">
+                                <CheckCircle2 class="size-3.5" />
+                                {{ creating ? 'Creating' : 'Editing' }}
+                            </Badge>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div v-if="loading" class="space-y-3 py-2">

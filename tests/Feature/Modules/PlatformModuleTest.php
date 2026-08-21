@@ -114,28 +114,6 @@ class PlatformModuleTest extends TestCase
     }
 
     // ─────────────────────────────────────────
-    // Global Search
-    // ─────────────────────────────────────────
-
-    public function test_global_search_requires_authentication(): void
-    {
-        $this->getJson('/api/v1/search?q=Maria')->assertStatus(401);
-    }
-
-    public function test_global_search_returns_scoped_groups(): void
-    {
-        $admin = $this->superAdmin();
-        $student = Student::factory()->create(['first_name' => 'Maria', 'last_name' => 'Santos']);
-
-        $this->actingAs($admin)
-            ->getJson('/api/v1/search?q=Maria')
-            ->assertOk()
-            ->assertJsonPath('data.total', 1)
-            ->assertJsonPath('data.groups.students.0.id', $student->id)
-            ->assertJsonPath('data.groups.students.0.route.params.id', $student->id);
-    }
-
-    // ─────────────────────────────────────────
     // Announcement targeting
     // ─────────────────────────────────────────
 

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { extractError } from '@/lib/api';
+import { useDebouncedSearch } from '@/composables/useDebouncedSearch';
 import { platformApi } from '@/lib/platformApi';
 import { subscriptionApi, type AuditActionOption, type AuditEntry } from '@/lib/subscriptionApi';
 import type { ActivityLogEntry } from '@/types/platform';
@@ -87,6 +88,8 @@ function applyFilters(): void {
     page.value = 1;
     refresh();
 }
+
+useDebouncedSearch(search, applyFilters);
 
 function switchSource(next: 'system' | 'subscription'): void {
     if (source.value === next) return;

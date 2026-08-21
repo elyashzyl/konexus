@@ -23,12 +23,12 @@ export const platformApi = {
                 }>('/notification-preferences', { matrix })
                 .then((r) => r.data.data),
     },
-    search: (q: string) =>
-        api
-            .get<{ data: { term: string; total: number; groups: Record<string, SearchGroupItem[]> } }>('/search', { params: { q } })
-            .then((r) => r.data.data),
     announcements: {
         mine: () => api.get<{ data: import('@/types/platform').AnnouncementItem[] }>('/announcements/mine').then((r) => r.data.data),
+    },
+    calendarEvents: {
+        index: (params?: { page?: number; per_page?: number; search?: string }) =>
+            api.get<{ data: Paginated<import('@/types/platform').SchoolCalendarEventItem> }>('/school-calendar', { params }).then((r) => r.data.data),
     },
     activityLogs: {
         index: (params: { page?: number; per_page?: number; log_name?: string; search?: string }) =>
@@ -237,9 +237,3 @@ export interface AdminDashboardSnapshot {
     }[];
 }
 
-export interface SearchGroupItem {
-    id: number;
-    label: string;
-    subtitle: string;
-    route: { name: string; params: Record<string, string | number> } | null;
-}

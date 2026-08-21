@@ -183,6 +183,20 @@ const subIsText = (s: SubscriptionSettingItem) => s.type === 'text';
 const subIsNumber = (s: SubscriptionSettingItem) => ['number', 'integer', 'decimal', 'float'].includes(s.type);
 const subIsArray = (s: SubscriptionSettingItem) => s.type === 'array';
 
+const titleCaseWords = (slug: string): string =>
+    slug
+        .split(/[_\-]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+const subGroupLabel = (group: string): string => titleCaseWords(group);
+
+const subSettingLabel = (key: string): string => {
+    const tail = key.includes('.') ? key.slice(key.indexOf('.') + 1) : key;
+    return titleCaseWords(tail);
+};
+
 function subSetValue(setting: SubscriptionSettingItem, value: string | number | boolean | number[] | null): void {
     setting.value = value;
     subDirty.value.add(setting.key);
@@ -219,7 +233,7 @@ async function saveSubSettings(): Promise<void> {
                 index="04"
                 eyebrow="Configuration"
                 title="Settings"
-                description="School-specific settings, plus platform-wide subscription configuration."
+                description="How your school runs day to day, and the subscription rules that govern billing and access."
             />
 
             <div class="portal-rise mt-8 inline-flex rounded-lg border border-border/60 bg-muted/40 p-1">
@@ -241,6 +255,15 @@ async function saveSubSettings(): Promise<void> {
                     Subscription settings
                 </Button>
             </div>
+
+            <p class="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                <template v-if="scope === 'system'">
+                    Day-to-day school configuration — identity, academic calendar, enrollment behavior, notifications and portal access. Changes apply only to the selected school.
+                </template>
+                <template v-else>
+                    Billing rules that shape how each school's subscription behaves — grace periods, expiry warnings and access defaults. These are platform-level overrides applied per school.
+                </template>
+            </p>
 
             <template v-if="scope === 'system'">
                 <div class="portal-rise mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
@@ -288,6 +311,12 @@ async function saveSubSettings(): Promise<void> {
                             @click="activeGroup = group.group"
                         >
                             {{ group.label }}
+                            <span
+                                v-if="dirtyCount(group) > 0"
+                                class="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-amber-500/15 px-1 font-mono text-[10px] leading-4 text-amber-600"
+                            >
+                                {{ dirtyCount(group) }}
+                            </span>
                         </Button>
                     </div>
 
@@ -377,7 +406,7 @@ async function saveSubSettings(): Promise<void> {
                 <div v-if="isPlatformOperator" class="portal-rise mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
                     <div class="flex items-center gap-2">
                         <Building2 class="size-4 text-muted-foreground" />
-                        <span class="text-sm font-medium">Workspace:</span>
+                        <span class="text-sm font-medium">School:</span>
                     </div>
 
                     <Select
@@ -405,24 +434,32 @@ async function saveSubSettings(): Promise<void> {
 
                 <section v-else class="mt-10 space-y-6">
                     <div class="flex items-center justify-between">
-                        <p class="text-sm text-muted-foreground">Grace windows, expiry behavior, notice thresholds and defaults.</p>
+                        <p class="max-w-xl text-sm text-muted-foreground">Grace periods, expiry warnings and access defaults for the selected school. Only changed settings are saved.</p>
                         <Button :disabled="!subDirty.size || subSaving" @click="saveSubSettings">
-                            <Save class="size-4" /> {{ subSaving ? 'Saving…' : `Save (${subDirty.size})` }}
+                            <Save class="size-4" /> {{ subSaving ? 'Saving…' : `Save changes (${subDirty.size})` }}
                         </Button>
                     </div>
                     <Card v-for="(settings, group) in subGroups" :key="group" class="relative overflow-hidden border-border/60 bg-card/60">
                         <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-                        <CardHeader>
-                            <CardTitle class="font-display text-lg font-medium capitalize tracking-[-0.01em]">{{ group }}</CardTitle>
+                        <CardHeader class="flex flex-row items-center justify-between gap-4 space-y-0">
+                            <CardTitle class="font-display text-lg font-medium tracking-[-0.01em]">{{ subGroupLabel(String(group)) }}</CardTitle>
+                            <span class="rounded-full border border-primary/15 bg-primary/5 px-3 py-1 font-mono text-xs text-primary">
+                                {{ settings.length }} {{ settings.length === 1 ? 'setting' : 'settings' }}
+                            </span>
                         </CardHeader>
                         <CardContent class="divide-y divide-border/60">
                             <div v-for="setting in settings" :key="setting.key" class="flex items-start justify-between gap-6 py-4">
                                 <div class="min-w-0 max-w-md">
-                                    <div class="flex items-center gap-2">
-                                        <p class="font-mono text-sm font-medium">{{ setting.key }}</p>
-                                        <Badge v-if="subDirty.has(setting.key)" variant="secondary">modified</Badge>
-                                    </div>
-                                    <p class="mt-1 text-xs text-muted-foreground">{{ setting.description }}</p>
+                                    <p class="text-sm font-medium">{{ subSettingLabel(setting.key) }}</p>
+                                    <p class="mt-0.5 font-mono text-[11px] text-muted-foreground">{{ setting.key }}</p>
+                                    <p class="mt-1.5 text-xs leading-relaxed text-muted-foreground">{{ setting.description || 'No description provided.' }}</p>
+                                    <Badge
+                                        v-if="subDirty.has(setting.key)"
+                                        variant="outline"
+                                        class="mt-2 border-amber-300/60 bg-amber-500/10 text-[10px] uppercase tracking-wide text-amber-600"
+                                    >
+                                        Unsaved
+                                    </Badge>
                                 </div>
                                 <div class="w-64 shrink-0">
                                     <Switch v-if="subIsBool(setting)" :checked="Boolean(setting.value)" @update:checked="subSetValue(setting, $event)" />

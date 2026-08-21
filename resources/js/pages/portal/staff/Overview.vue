@@ -17,14 +17,14 @@ const portal = computed(() => {
 const roleLabel = computed(() => portal.value?.label ?? 'School staff');
 
 const SIDEBAR_MODULE_KEYS: Record<string, string[]> = {
-    registrar: ['enrollment-operations', 'enrollments', 'students', 'notifications', 'announcements'],
-    principal: ['enrollment-approvals', 'announcements'],
-    'finance-officer': ['enrollment-payments', 'announcements'],
-    'guidance-counselor': ['announcements'],
-    'school-nurse': ['announcements'],
-    librarian: ['announcements'],
-    'hr-officer': ['announcements'],
-    'inventory-officer': ['announcements'],
+    registrar: ['enrollment-operations', 'enrollments', 'students', 'notifications', 'announcements', 'calendar'],
+    principal: ['enrollment-approvals', 'students', 'announcements', 'calendar'],
+    'finance-officer': ['enrollment-payments', 'subscription', 'students', 'announcements', 'calendar'],
+    'guidance-counselor': ['announcements', 'calendar'],
+    'school-nurse': ['announcements', 'calendar'],
+    librarian: ['announcements', 'calendar'],
+    'hr-officer': ['announcements', 'calendar'],
+    'inventory-officer': ['announcements', 'calendar'],
 };
 
 const visibleModules = computed(() => {
@@ -64,6 +64,14 @@ function moduleHref(key: string): string | null {
 
     if (key === 'online-enrollment') {
         return '/enrollment';
+    }
+
+    if (key === 'subscription') {
+        return `${route.path}/subscription`;
+    }
+
+    if (key === 'calendar') {
+        return `${route.path}/calendar`;
     }
 
     return null;

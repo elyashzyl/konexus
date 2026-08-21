@@ -33,6 +33,7 @@ import {
     ShieldCheck,
     UserRound,
     Users,
+    Wallet,
     type LucideIcon,
 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -213,8 +214,11 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
                 ],
             },
             {
-                label: 'Communications',
-                items: [{ title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone }],
+                label: 'School life',
+                items: [
+                    { title: 'School calendar', href: `${overviewHref.value}/calendar`, icon: CalendarDays },
+                    { title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone },
+                ],
             },
         ];
     }
@@ -232,6 +236,10 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
             {
                 label: 'Communications',
                 items: [{ title: 'Announcements', href: `${overviewHref.value}/announcements`, icon: Megaphone }],
+            },
+            {
+                label: 'School life',
+                items: [{ title: 'School calendar', href: `${overviewHref.value}/calendar`, icon: CalendarDays }],
             },
         ];
     }

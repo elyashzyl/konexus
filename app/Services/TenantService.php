@@ -32,6 +32,13 @@ class TenantService extends CrudService
      */
     protected array $with = ['schoolProfile'];
 
+    /**
+     * Relations counted with every record.
+     *
+     * @var list<string>
+     */
+    protected array $withCount = ['subscriptions'];
+
     protected string $defaultSortBy = 'name';
 
     public function __construct(
