@@ -12,13 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\HasActivity;
 
 class Student extends Model
 {
     /** @use HasFactory<StudentFactory> */
-    use HasFactory, LogsActivity, SoftDeletes;
+    use HasFactory, HasActivity, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -241,7 +241,7 @@ class Student extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
+            ->dontLogEmptyChanges()
             ->useLogName('students');
     }
 }
