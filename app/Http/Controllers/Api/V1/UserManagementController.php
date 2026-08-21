@@ -7,6 +7,7 @@ use App\Exceptions\ApiException;
 use App\Http\Resources\AuthResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\LicenseRestrictionService;
 use App\Services\UserManagementService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -101,6 +102,10 @@ class UserManagementController extends ApiController
         ]);
 
         $this->assertSchoolAssignment($roles, $schoolProfileId);
+
+        if ($schoolProfileId !== null) {
+            app(LicenseRestrictionService::class)->assertCanCreate($request->user(), 'users', (int) $schoolProfileId);
+        }
 
         $validated['school_profile_id'] = $schoolProfileId;
 

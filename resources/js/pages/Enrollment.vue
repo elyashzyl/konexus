@@ -194,6 +194,21 @@ const accountSettings = ref<Record<string, unknown> | null>(null);
 const completed = ref(false);
 const paymentMethod = ref<'online' | 'cash' | ''>('');
 const paymentSaving = ref(false);
+
+async function choosePayment(method: 'online' | 'cash'): Promise<void> {
+    if (!application.value || paymentSaving.value) return;
+    paymentSaving.value = true;
+    try {
+        await api.post(`/public/enrollments/${application.value.id}/payment-preference`, { payment_method: method });
+        paymentMethod.value = method;
+        toast.success(method === 'online' ? 'Online payment selected.' : 'Cash payment selected.');
+    } catch (error) {
+        toast.error(extractError(error));
+    } finally {
+        paymentSaving.value = false;
+    }
+}
+
 const resumeAvailable = ref(false);
 const resuming = ref(false);
 const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });

@@ -168,6 +168,12 @@ export const portalRoutes: RouteRecordRaw[] = [
                 component: () => import('@/pages/portal/staff/FinanceEnrollmentPayments.vue'),
                 meta: { title: 'Enrollment Payments', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'Enrollment Payments' }] },
             },
+            {
+                path: 'subscription',
+                name: 'portal.staff.finance.subscription',
+                component: () => import('@/pages/portal/staff/SchoolSubscription.vue'),
+                meta: { title: 'Subscription & Billing', breadcrumbs: [{ title: 'Staff Portal' }, { title: 'Subscription & Billing' }] },
+            },
         ],
     },
     {

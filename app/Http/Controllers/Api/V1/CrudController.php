@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Api\IndexRequest;
 use App\Services\CrudService;
+use App\Services\LicenseRestrictionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Http\FormRequest;
@@ -72,9 +73,36 @@ abstract class CrudController extends ApiController
     {
         $this->authorize('create', $this->modelClass);
 
-        $model = $this->service->create($this->resolveFormRequest($request)->validated());
+        $validated = $this->resolveFormRequest($request)->validated();
+
+        $this->assertLicenseAllowsCreation($request, $validated);
+
+        $model = $this->service->create($validated);
 
         return $this->success(new $this->resourceClass($model), "{$this->resourceLabel()} created.", 201);
+    }
+
+    /**
+     * Hard-block creation when the tenant's license limit for this module is
+     * reached. Models without a license restriction pass through untouched.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    protected function assertLicenseAllowsCreation(Request $request, array $validated): void
+    {
+        $restrictions = app(LicenseRestrictionService::class);
+
+        $resource = $restrictions->resourceForModel($this->modelClass);
+
+        if ($resource === null) {
+            return;
+        }
+
+        $restrictions->assertCanCreate(
+            $request->user(),
+            $resource,
+            isset($validated['school_profile_id']) ? (int) $validated['school_profile_id'] : null,
+        );
     }
 
     /**

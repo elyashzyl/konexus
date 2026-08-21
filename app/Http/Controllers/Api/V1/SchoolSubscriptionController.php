@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\Platform\SubscriptionStatus;
 use App\Http\Resources\SubscriptionResource;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\FeatureAccessService;
+use App\Services\LicenseRestrictionService;
 use App\Services\TenantResolverService;
 use App\Services\UsageService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -25,6 +25,7 @@ class SchoolSubscriptionController extends ApiController
     public function __construct(
         private readonly TenantResolverService $resolver,
         private readonly FeatureAccessService $features,
+        private readonly LicenseRestrictionService $restrictions,
         private readonly UsageService $usage,
     ) {}
 
@@ -46,6 +47,7 @@ class SchoolSubscriptionController extends ApiController
         }
 
         $subscription = $tenant->currentSubscription();
+        $license = $this->restrictions->activeLicense($tenant);
 
         return $this->success([
             'tenant' => [
@@ -56,8 +58,13 @@ class SchoolSubscriptionController extends ApiController
             ],
             'subscription' => $subscription ? new SubscriptionResource($subscription->load(['plan.planFeatures', 'features'])) : null,
             'features' => $subscription ? $this->features->effectiveFeatures($subscription) : [],
-            'limits' => $this->features->planLimits($tenant),
+            'limits' => $this->restrictions->effectiveLimits($tenant),
             'usage' => $this->usage->limitStatus($tenant),
+            'license' => $license ? [
+                'masked_key' => $license->maskedKey(),
+                'status' => $license->status,
+                'expiration_date' => $license->expiration_date?->toDateString(),
+            ] : null,
             'read_only' => true,
         ], 'Subscription summary retrieved.');
     }

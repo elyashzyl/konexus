@@ -209,6 +209,7 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
                 label: 'Leadership',
                 items: [
                     { title: 'Section assignment', href: `${overviewHref.value}/enrollment-approvals`, icon: ClipboardList },
+                    { title: 'Students', href: `${overviewHref.value}/students`, icon: Users },
                 ],
             },
             {
@@ -224,6 +225,8 @@ const staffGroups = computed<{ label: string; items: NavItem[] }[]>(() => {
                 label: 'Finance',
                 items: [
                     { title: 'Enrollment payments', href: `${overviewHref.value}/enrollment-payments`, icon: ClipboardList },
+                    { title: 'Subscription & billing', href: `${overviewHref.value}/subscription`, icon: Wallet },
+                    { title: 'Students', href: `${overviewHref.value}/students`, icon: Users },
                 ],
             },
             {

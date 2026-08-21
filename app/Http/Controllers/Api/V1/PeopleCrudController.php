@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Api\IndexRequest;
+use App\Services\LicenseRestrictionService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,14 @@ abstract class PeopleCrudController extends CrudController
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', $this->modelClass);
+
+        $restrictions = app(LicenseRestrictionService::class);
+
+        $resource = $restrictions->resourceForModel($this->modelClass);
+
+        if ($resource !== null) {
+            $restrictions->assertCanCreate($request->user(), $resource);
+        }
 
         $rows = $request->input('rows');
 
