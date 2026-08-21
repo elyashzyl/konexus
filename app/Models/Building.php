@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Building extends Model
 {
@@ -78,7 +78,7 @@ class Building extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontLogEmptyChanges()
+            ->dontSubmitEmptyLogs()
             ->useLogName('buildings');
     }
 }

@@ -67,7 +67,7 @@ class StudentController extends PeopleCrudController
 
         $this->authorize('view', $student);
 
-        $activities = $student->activitiesAsSubject()->orderByDesc('created_at')->paginate(20);
+        $activities = $student->activities()->orderByDesc('created_at')->paginate(20);
 
         return $this->success([
             'items' => ActivityResource::collection($activities->items()),

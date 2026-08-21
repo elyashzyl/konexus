@@ -228,11 +228,11 @@ class WalkInEnrollmentTest extends TestCase
         $this->actingAs($registrar, 'sanctum')
             ->postJson("/api/v1/enrollments/{$id}/submit")
             ->assertOk()
-            ->assertJsonPath('data.status', EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value);
+            ->assertJsonPath('data.status', EnrollmentStatus::FOR_PAYMENT->value);
 
         $this->assertDatabaseHas('enrollments', [
             'id' => $id,
-            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+            'status' => EnrollmentStatus::FOR_PAYMENT->value,
             'student_id' => $studentId,
         ]);
     }

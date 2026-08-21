@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class CurriculumEntry extends Model
 {
@@ -109,7 +109,7 @@ class CurriculumEntry extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontLogEmptyChanges()
+            ->dontSubmitEmptyLogs()
             ->logOnly(['subject_type', 'units', 'is_required', 'display_order', 'status', 'is_active'])
             ->useLogName('curriculum');
     }

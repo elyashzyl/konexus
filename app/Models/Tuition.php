@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Tuition extends Model
 {
@@ -83,7 +83,7 @@ class Tuition extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontLogEmptyChanges()
+            ->dontSubmitEmptyLogs()
             ->useLogName('tuitions');
     }
 }

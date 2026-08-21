@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class AcademicClass extends Model
 {
@@ -134,7 +134,7 @@ class AcademicClass extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontLogEmptyChanges()
+            ->dontSubmitEmptyLogs()
             ->logOnly(['section_id', 'adviser_teacher_id', 'name', 'status', 'is_active'])
             ->useLogName('academic_classes');
     }

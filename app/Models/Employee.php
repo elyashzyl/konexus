@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Support\LogOptions;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Employee extends Model
 {
@@ -148,7 +148,7 @@ class Employee extends Model
     {
         return LogOptions::defaults()
             ->logOnlyDirty()
-            ->dontLogEmptyChanges()
+            ->dontSubmitEmptyLogs()
             ->useLogName('employees');
     }
 }
