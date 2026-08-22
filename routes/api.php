@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\ParentController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PlatformDashboardController;
 use App\Http\Controllers\Api\V1\Portal\ParentPortalController;
+use App\Http\Controllers\Api\V1\Portal\StaffPortalController;
 use App\Http\Controllers\Api\V1\Portal\StudentPortalController;
 use App\Http\Controllers\Api\V1\Portal\TeacherPortalController;
 use App\Http\Controllers\Api\V1\PublicEnrollmentController;
@@ -503,6 +504,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($crudRoutes, $peopl
 
         // Portals (parent / student / teacher) – always permission-scoped to self.
         Route::prefix('portal')->name('portal.')->group(function (): void {
+            Route::prefix('staff')->name('staff.')->group(function (): void {
+                Route::get('dashboard', [StaffPortalController::class, 'dashboard'])->name('dashboard');
+            });
+
             Route::prefix('parent')->name('parent.')->group(function (): void {
                 Route::get('dashboard', [ParentPortalController::class, 'dashboard'])->name('dashboard');
                 Route::get('children', [ParentPortalController::class, 'children'])->name('children');

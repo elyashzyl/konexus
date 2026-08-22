@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Campus;
 use App\Models\Employee;
 use App\Models\Guardian;
 use App\Models\ParentGuardian;
+use App\Models\SchoolProfile;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -20,8 +22,21 @@ class PeopleManagementSeeder extends Seeder
      */
     public function run(): void
     {
-        // Employees power both teachers and staff profiles.
+        // Employees power both teachers and staff profiles. Attach every
+        // employee to the school's first campus so campus-scoped listings
+        // (e.g. the active workspace filter) can see them.
+        $campusId = Campus::query()
+            ->whereIn('school_profile_id', SchoolProfile::query()->select('id'))
+            ->orderBy('id')
+            ->value('id');
+
         $employees = Employee::factory()->count(20)->create();
+
+        $employees->each(function (Employee $employee) use ($campusId): void {
+            if ($campusId !== null) {
+                $employee->campuses()->sync([$campusId]);
+            }
+        });
 
         $employees->where('employment_type', 'teaching')->each(function (Employee $employee): void {
             Teacher::factory()->create([

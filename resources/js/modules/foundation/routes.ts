@@ -10,6 +10,8 @@ export const foundationRoutes: RouteRecordRaw[] = [
     ...FOUNDATION_MODULES.map((module) => {
         const isSchoolProfile = module.key === 'school-profile';
         const isCampusWorkspaces = module.key === 'campuses';
+        const isClassSchedules = module.key === 'class-schedules';
+        const hasBespokePage = isSchoolProfile || isCampusWorkspaces || isClassSchedules;
 
         return {
             path: module.path,
@@ -18,8 +20,10 @@ export const foundationRoutes: RouteRecordRaw[] = [
                 ? () => import('@/pages/foundation/SchoolProfileView.vue')
                 : isCampusWorkspaces
                   ? () => import('@/pages/foundation/CampusWorkspacesView.vue')
-                  : () => import('@/pages/foundation/ModulePage.vue'),
-            props: isSchoolProfile || isCampusWorkspaces ? undefined : { moduleKey: module.key },
+                  : isClassSchedules
+                    ? () => import('@/pages/foundation/ClassSchedulesView.vue')
+                    : () => import('@/pages/foundation/ModulePage.vue'),
+            props: hasBespokePage ? undefined : { moduleKey: module.key },
             meta: {
                 title: module.title,
                 breadcrumbs: [{ title: module.title, href: module.path }],

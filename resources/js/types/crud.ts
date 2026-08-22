@@ -23,7 +23,7 @@ export interface CrudQuery {
     trashed?: boolean;
 }
 
-export type CrudFieldType = 'text' | 'textarea' | 'number' | 'email' | 'url' | 'date' | 'select' | 'switch' | 'display';
+export type CrudFieldType = 'text' | 'textarea' | 'number' | 'email' | 'url' | 'date' | 'time' | 'select' | 'switch' | 'display';
 
 export interface CrudOption {
     value: string | number;

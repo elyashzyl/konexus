@@ -5,6 +5,7 @@ namespace Tests\Feature\Modules;
 use App\Enums\EnrollmentStatus;
 use App\Enums\RoleEnum;
 use App\Events\EnrollmentStatusChanged;
+use App\Models\Campus;
 use App\Models\Employee;
 use App\Models\Enrollment;
 use App\Models\ParentGuardian;
@@ -153,6 +154,85 @@ class PortalModuleTest extends TestCase
             ->getJson('/api/v1/portal/teacher/assignments')
             ->assertOk()
             ->assertJsonPath('data.items', []);
+    }
+
+    // ─────────────────────────────────────────
+    // Staff Portal Dashboard
+    // ─────────────────────────────────────────
+
+    public function test_staff_dashboard_requires_authentication(): void
+    {
+        $this->getJson('/api/v1/portal/staff/dashboard')->assertStatus(401);
+    }
+
+    public function test_registrar_dashboard_returns_enrollment_statistics(): void
+    {
+        $user = $this->userWithRole(RoleEnum::REGISTRAR->roleName());
+        $campus = Campus::factory()->create();
+        $user->forceFill(['active_campus_id' => $campus->id])->save();
+
+        Enrollment::factory()->count(2)->create([
+            'status' => EnrollmentStatus::OFFICIALLY_ENROLLED->value,
+            'campus_id' => $campus->id,
+        ]);
+        Enrollment::factory()->create([
+            'status' => EnrollmentStatus::DRAFT->value,
+            'campus_id' => $campus->id,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/portal/staff/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.role', 'registrar')
+            ->assertJsonPath('data.unread_notifications', 0);
+
+        $stats = collect($this->getJson('/api/v1/portal/staff/dashboard')->json('data.stats'))->keyBy('key');
+
+        $this->assertSame(3, $stats['enrollments']['value']);
+        $this->assertSame(2, $stats['officially-enrolled']['value']);
+        $this->assertSame(1, $stats['drafts']['value']);
+        $this->assertSame('students', $stats['students']['href']);
+    }
+
+    public function test_principal_dashboard_returns_approval_queue(): void
+    {
+        $user = $this->userWithRole(RoleEnum::PRINCIPAL->roleName());
+        $campus = Campus::factory()->create();
+        $user->forceFill(['active_campus_id' => $campus->id])->save();
+
+        Enrollment::factory()->create([
+            'status' => EnrollmentStatus::FOR_PRINCIPAL_APPROVAL->value,
+            'campus_id' => $campus->id,
+        ]);
+        Enrollment::factory()->create([
+            'status' => EnrollmentStatus::OFFICIALLY_ENROLLED->value,
+            'campus_id' => $campus->id,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/portal/staff/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.role', 'principal');
+
+        $stats = collect($this->getJson('/api/v1/portal/staff/dashboard')->json('data.stats'))->keyBy('key');
+
+        $this->assertSame(1, $stats['approvals']['value']);
+        $this->assertSame('enrollment-approvals', $stats['approvals']['href']);
+    }
+
+    public function test_support_office_dashboard_returns_reference_counts(): void
+    {
+        $user = $this->userWithRole(RoleEnum::INVENTORY_OFFICER->roleName());
+
+        $response = $this->actingAs($user)->getJson('/api/v1/portal/staff/dashboard');
+
+        $response->assertOk()->assertJsonPath('data.role', 'inventory-officer');
+
+        $keys = collect($response->json('data.stats'))->pluck('key')->all();
+
+        $this->assertContains('buildings', $keys);
+        $this->assertContains('rooms', $keys);
+        $this->assertContains('events', $keys);
     }
 
     // ─────────────────────────────────────────

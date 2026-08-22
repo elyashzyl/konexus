@@ -1,81 +1,102 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge';
 import { staffPortalByRole } from '@/config/staffPortals';
+import api, { extractError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { ArrowUpRight, BadgeCheck, BriefcaseBusiness, HeartPulse, Megaphone, ShieldCheck, Sparkles } from 'lucide-vue-next';
-import { computed } from 'vue';
+import {
+    BellRing,
+    BookOpen,
+    BriefcaseBusiness,
+    Building2,
+    CalendarDays,
+    CalendarRange,
+    ClipboardCheck,
+    ClipboardList,
+    DoorOpen,
+    FilePlus2,
+    GraduationCap,
+    LoaderCircle,
+    MapPin,
+    Megaphone,
+    School,
+    Users,
+    Wallet,
+} from 'lucide-vue-next';
+import type { Component } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
+import { toast } from 'vue-sonner';
+
+type Stat = {
+    key: string;
+    label: string;
+    value: number;
+    href: string | null;
+};
+
+type Dashboard = {
+    role: string | null;
+    academic_year: string | null;
+    campus: string | null;
+    unread_notifications: number;
+    stats: Stat[];
+};
+
+const STAT_ICONS: Record<string, Component> = {
+    enrollments: ClipboardList,
+    'officially-enrolled': GraduationCap,
+    'for-review': ClipboardCheck,
+    drafts: FilePlus2,
+    students: Users,
+    approvals: School,
+    payments: Wallet,
+    employees: BriefcaseBusiness,
+    subjects: BookOpen,
+    buildings: Building2,
+    rooms: DoorOpen,
+    announcements: Megaphone,
+    events: CalendarDays,
+};
 
 const auth = useAuthStore();
 const route = useRoute();
 
+const loading = ref(true);
+const dashboard = ref<Dashboard | null>(null);
+
 const portal = computed(() => {
     const roleParam = route.params.role as string | undefined;
 
-    return staffPortalByRole(roleParam ?? auth.primaryRole?.name ?? 'principal');
+    return staffPortalByRole(roleParam ?? dashboard.value?.role ?? auth.primaryRole?.name ?? 'principal');
 });
 
-const roleLabel = computed(() => portal.value?.label ?? 'School staff');
+const portalBase = computed(() => {
+    const match = route.path.match(/^\/portal\/staff\/[^/]+/);
 
-const SIDEBAR_MODULE_KEYS: Record<string, string[]> = {
-    registrar: ['enrollment-operations', 'enrollments', 'students', 'notifications', 'announcements', 'calendar'],
-    principal: ['enrollment-approvals', 'students', 'announcements', 'calendar'],
-    'finance-officer': ['enrollment-payments', 'subscription', 'students', 'announcements', 'calendar'],
-    'guidance-counselor': ['announcements', 'calendar'],
-    'school-nurse': ['announcements', 'calendar'],
-    librarian: ['announcements', 'calendar'],
-    'hr-officer': ['announcements', 'calendar'],
-    'inventory-officer': ['announcements', 'calendar'],
-};
-
-const visibleModules = computed(() => {
-    const sidebarKeys = SIDEBAR_MODULE_KEYS[portal.value?.role ?? ''] ?? [];
-
-    return (portal.value?.modules ?? []).filter((module) => !sidebarKeys.includes(module.key));
+    return match ? match[0] : `/portal/staff/${portal.value?.role ?? 'registrar'}`;
 });
 
-function moduleHref(key: string): string | null {
-    if (key === 'announcements') {
-        return `${route.path}/announcements`;
-    }
-
-    if (key === 'enrollment-operations') {
-        return `${route.path}/enrollment-operations`;
-    }
-
-    if (key === 'enrollments') {
-        return `${route.path}/enrollments`;
-    }
-
-    if (key === 'students') {
-        return `${route.path}/students`;
-    }
-
-    if (key === 'notifications') {
-        return `${route.path}/notifications`;
-    }
-
-    if (key === 'enrollment-approvals') {
-        return `${route.path}/enrollment-approvals`;
-    }
-
-    if (key === 'enrollment-payments') {
-        return `${route.path}/enrollment-payments`;
-    }
-
-    if (key === 'online-enrollment') {
-        return '/enrollment';
-    }
-
-    if (key === 'subscription') {
-        return `${route.path}/subscription`;
-    }
-
-    if (key === 'calendar') {
-        return `${route.path}/calendar`;
-    }
-
-    return null;
+function iconFor(key: string): Component {
+    return STAT_ICONS[key] ?? ClipboardList;
 }
+
+async function load(): Promise<void> {
+    loading.value = true;
+
+    try {
+        const response = await api.get<{ data: Dashboard }>('/portal/staff/dashboard');
+
+        dashboard.value = response.data.data;
+    } catch (error) {
+        toast.error(extractError(error));
+    } finally {
+        loading.value = false;
+    }
+}
+
+onMounted(() => {
+    void load();
+});
 </script>
 
 <template>
@@ -85,119 +106,78 @@ function moduleHref(key: string): string | null {
         />
 
         <div class="relative w-full px-5 pb-20 sm:px-8 lg:px-12">
-            <section class="portal-rise grid gap-12 pb-14 pt-10 lg:grid-cols-[1.25fr_0.75fr] lg:gap-16 lg:pt-16">
-                <div class="flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <span class="bg-primary/8 flex size-9 items-center justify-center rounded-lg text-primary ring-1 ring-primary/10">
-                                <BriefcaseBusiness class="size-4" />
-                            </span>
-                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">{{ portal?.eyebrow }}</p>
-                        </div>
-
-                        <h1 class="mt-8 font-display text-[3rem] font-medium leading-[1.02] tracking-[-0.025em] text-foreground sm:text-[4rem]">
-                            {{ auth.user?.name }}
-                        </h1>
-                        <p class="mt-5 max-w-xl text-[15px] leading-7 text-muted-foreground">
-                            {{ portal?.intro }}
-                        </p>
+            <section class="portal-rise flex flex-col justify-between gap-6 pt-10 lg:flex-row lg:items-end lg:pt-16">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <span class="bg-primary/8 flex size-9 items-center justify-center rounded-lg text-primary ring-1 ring-primary/10">
+                            <BriefcaseBusiness class="size-4" />
+                        </span>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">{{ portal?.eyebrow }}</p>
                     </div>
 
-                    <div class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3">
-                        <span class="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <ShieldCheck class="size-3.5 text-primary" /> Private staff record
-                        </span>
-                        <span class="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                            <Sparkles class="size-3.5 text-primary" /> Office-sourced
-                        </span>
-                    </div>
+                    <h1 class="mt-6 font-display text-4xl font-medium leading-tight tracking-[-0.02em] text-foreground sm:text-5xl">
+                        {{ portal?.label }} at a glance
+                    </h1>
                 </div>
 
-                <aside class="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card p-7">
-                    <div class="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                    <div>
-                        <div class="flex items-center justify-between">
-                            <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Your role</p>
-                            <span class="size-1.5 rounded-full bg-primary" />
-                        </div>
-
-                        <div class="mt-6">
-                            <p class="font-display text-2xl font-medium tracking-[-0.01em] text-foreground">{{ roleLabel }}</p>
-                            <p class="mt-1.5 text-sm text-muted-foreground">{{ portal?.description }}</p>
-                        </div>
-
-                        <div class="mt-7 space-y-3.5 border-t border-border/60 pt-5 text-sm">
-                            <div class="flex items-start gap-3">
-                                <BadgeCheck class="mt-0.5 size-4 shrink-0 text-primary" />
-                                <span>{{ auth.user?.email }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <p class="mt-8 border-t border-border/60 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-                        {{ portal?.eyebrow }} · Staff portal
-                    </p>
-                </aside>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <Badge v-if="dashboard?.academic_year" variant="outline" class="gap-1.5 px-3 py-1.5 text-xs font-medium">
+                        <CalendarRange class="size-3.5 text-primary" />
+                        AY {{ dashboard.academic_year }}
+                    </Badge>
+                    <Badge v-if="dashboard?.campus" variant="outline" class="gap-1.5 px-3 py-1.5 text-xs font-medium">
+                        <MapPin class="size-3.5 text-primary" />
+                        {{ dashboard.campus }}
+                    </Badge>
+                    <Badge variant="outline" class="gap-1.5 px-3 py-1.5 text-xs font-medium">
+                        <BellRing class="size-3.5 text-primary" />
+                        {{ dashboard?.unread_notifications ?? 0 }} unread
+                    </Badge>
+                </div>
             </section>
 
-            <section class="portal-rise mt-8" style="animation-delay: 160ms">
-                <div class="flex items-end justify-between gap-6">
-                    <div>
-                        <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Workspace</p>
-                        <h2 class="mt-3 font-display text-3xl font-medium tracking-[-0.015em] text-foreground">
-                            In your {{ roleLabel.toLowerCase() }} workspace
-                        </h2>
-                    </div>
-                </div>
+            <div v-if="loading && !dashboard" class="portal-rise mt-14 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <LoaderCircle class="size-4 animate-spin" />
+                Loading office statistics…
+            </div>
 
-                <div class="portal-rise mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <template v-else-if="dashboard">
+                <section class="portal-rise mt-10" style="animation-delay: 120ms">
+                    <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Office statistics</p>
+
                     <div
-                        v-for="(module, index) in visibleModules"
-                        :key="module.key"
-                        class="group flex flex-col justify-between gap-8 rounded-2xl border border-border/60 bg-card/50 p-6 transition-colors hover:border-primary/25"
+                        class="mt-5 grid gap-4"
+                        :class="dashboard.stats.length >= 5 ? 'sm:grid-cols-2 lg:grid-cols-5' : 'sm:grid-cols-2 lg:grid-cols-4'"
                     >
-                        <div>
-                            <span class="index-num font-mono text-xs text-muted-foreground/60">{{ String(index + 1).padStart(2, '0') }}</span>
-                            <h3 class="mt-4 font-display text-lg font-medium tracking-[-0.01em] text-foreground">{{ module.title }}</h3>
-                            <p class="mt-2 text-sm leading-6 text-muted-foreground">{{ module.description }}</p>
-                        </div>
-
-                        <RouterLink
-                            v-if="moduleHref(module.key)"
-                            :to="moduleHref(module.key)!"
-                            class="mt-6 inline-flex w-fit items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-opacity group-hover:opacity-80"
+                        <component
+                            :is="stat.href ? RouterLink : 'div'"
+                            v-for="stat in dashboard.stats"
+                            :key="stat.key"
+                            :to="stat.href ? `${portalBase}/${stat.href}` : undefined"
+                            class="group rounded-2xl border border-border/60 bg-card p-6 transition-colors"
+                            :class="stat.href ? 'hover:border-primary/30' : ''"
                         >
-                            Open
-                            <ArrowUpRight class="size-3.5" />
-                        </RouterLink>
-                        <div v-else class="mt-6 flex items-center gap-2 text-xs text-muted-foreground/70">
-                            <Megaphone class="size-3.5 text-primary/60" />
-                            Managed by the school office
-                        </div>
-                    </div>
-                </div>
+                            <div class="flex items-start justify-between">
+                                <span class="bg-primary/8 flex size-10 items-center justify-center rounded-xl text-primary ring-1 ring-primary/10">
+                                    <component :is="iconFor(stat.key)" class="size-5" />
+                                </span>
+                                <span
+                                    class="font-display text-4xl font-medium tabular-nums tracking-[-0.02em] text-foreground"
+                                >{{ stat.value }}</span>
+                            </div>
 
-                <div
-                    v-if="visibleModules.length === 0"
-                    class="portal-rise mt-8 rounded-2xl border border-border/60 bg-card/50 p-8 text-center"
-                    style="animation-delay: 80ms"
-                >
-                    <p class="font-display text-xl font-medium text-foreground">Everything is in the sidebar</p>
-                    <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                        All your workspace modules are listed in the navigation on the left, so there's nothing duplicated here.
-                    </p>
-                </div>
-            </section>
-
-            <footer class="portal-rise mt-20 border-t border-border/60 pt-6" style="animation-delay: 240ms">
-                <div class="flex flex-col justify-between gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center">
-                    <p>Protect your account and do not share your password.</p>
-                    <div class="flex items-center gap-2">
-                        <HeartPulse class="size-3.5 text-primary" />
-                        Records are maintained by the school office.
+                            <p class="mt-5 text-sm leading-5 text-muted-foreground">{{ stat.label }}</p>
+                        </component>
                     </div>
-                </div>
-            </footer>
+                </section>
+
+                <footer class="portal-rise mt-14 border-t border-border/60 pt-6" style="animation-delay: 240ms">
+                    <div class="flex flex-col justify-between gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center">
+                        <p>Counts refresh each time you open this page.</p>
+                        <p>Records are maintained by the school office.</p>
+                    </div>
+                </footer>
+            </template>
         </div>
     </div>
 </template>

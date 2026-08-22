@@ -16,6 +16,7 @@ enum ScheduleDay: string
     case THURSDAY = 'thursday';
     case FRIDAY = 'friday';
     case SATURDAY = 'saturday';
+    case SUNDAY = 'sunday';
 
     /**
      * Human readable label for the day.
@@ -29,6 +30,7 @@ enum ScheduleDay: string
             self::THURSDAY => 'Thursday',
             self::FRIDAY => 'Friday',
             self::SATURDAY => 'Saturday',
+            self::SUNDAY => 'Sunday',
         };
     }
 

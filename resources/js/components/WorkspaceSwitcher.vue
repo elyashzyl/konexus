@@ -85,7 +85,10 @@ onMounted(() => {
 <template>
     <DropdownMenu>
         <DropdownMenuTrigger as-child>
-            <SidebarMenuButton size="lg" class="h-auto min-h-14 justify-between rounded-xl border border-sidebar-border bg-sidebar-accent/45 px-3 py-2.5 hover:bg-sidebar-accent">
+            <SidebarMenuButton
+                size="lg"
+                class="h-auto min-h-14 justify-between gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/45 px-3.5 py-3 hover:bg-sidebar-accent/45 active:bg-sidebar-accent/45 data-[state=open]:bg-sidebar-accent/45 data-[state=open]:hover:bg-sidebar-accent/45"
+            >
                 <span class="flex min-w-0 items-center gap-2.5">
                     <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                         <Building2 class="size-4" />

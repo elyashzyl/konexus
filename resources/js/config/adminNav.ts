@@ -111,6 +111,7 @@ export function buildAdminNav(can: (role: string) => boolean): AdminNavModel {
                 ['academic-terms', 'Academic terms'],
                 ['grade-levels', 'Grade levels'],
                 ['sections', 'Sections'],
+                ['class-schedules', 'Class schedules'],
                 ['subjects', 'Subjects'],
                 ['departments', 'Departments'],
             ]),
